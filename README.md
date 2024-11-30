@@ -7,7 +7,7 @@ Loop is a modern programming language that combines simplicity with power. It su
 
 - Clean, expressive syntax
 - Type inference with optional type annotations 
-- First-class async/await support
+- First-class async support
 - Pattern matching and exhaustive matches
 - Immutable by default with opt-in mutability
 - Git-based package management
