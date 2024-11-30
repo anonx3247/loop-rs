@@ -234,6 +234,7 @@ pub fn get_keywords_map() -> HashMap<&'static str, TokenType> {
     keywords.insert("else", TokenType::Conditional(Conditional::Else));
     keywords.insert("match", TokenType::Conditional(Conditional::Match));
     keywords.insert("for", TokenType::Loop(Loop::For));
+    keywords.insert("in", TokenType::Loop(Loop::In));
     keywords.insert("while", TokenType::Loop(Loop::While));
     keywords.insert("loop", TokenType::Loop(Loop::Loop));
     keywords.insert("ret", TokenType::Function(Function::Return));
@@ -281,6 +282,12 @@ pub fn get_symbols_map() -> HashMap<&'static str, TokenType> {
     symbols.insert("}", TokenType::Bracket(Bracket::CloseBrace));
     symbols.insert("[", TokenType::Bracket(Bracket::OpenBracket));
     symbols.insert("]", TokenType::Bracket(Bracket::CloseBracket));
+    symbols.insert(":=", TokenType::Operator(Operator::Assign));
+    symbols.insert("+=", TokenType::Operator(Operator::PlusAssign));
+    symbols.insert("-=", TokenType::Operator(Operator::MinusAssign));
+    symbols.insert("*=", TokenType::Operator(Operator::MulAssign));
+    symbols.insert("/=", TokenType::Operator(Operator::DivAssign));
+    symbols.insert("%=", TokenType::Operator(Operator::ModAssign));
     symbols
 }
 
