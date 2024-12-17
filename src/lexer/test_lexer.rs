@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod test_lexer {
     use crate::lexer::*;
-    use crate::lexer::tokens::*;
+    use crate::lexer::token::*;
 
     #[test]
     fn test_index_until_boundary_excluding() {
@@ -58,8 +58,8 @@ mod test_lexer {
 
     #[test]
     fn test_tokenize_whitespace() {
-        assert_eq!(Lexer::tokenize_whitespace(&String::from("   \t\n")), Ok((Token::new(TokenType::Whitespace(Whitespace::Newline)), 5)));
-        assert_eq!(Lexer::tokenize_whitespace(&String::from("\t   ")), Ok((Token::new(TokenType::Whitespace(Whitespace::Space)), 4)));
+        assert_eq!(Lexer::tokenize_whitespace(&String::from("   \t\n")), Ok((Token::Whitespace(Whitespace::Newline), 5)));
+        assert_eq!(Lexer::tokenize_whitespace(&String::from("\t   ")), Ok((Token::Whitespace(Whitespace::Space), 4)));
     }
 
     #[test]
@@ -78,16 +78,16 @@ mod test_lexer {
         assert_eq!(lexer.tokenize_next(), Ok(Token::from_symbol("..").unwrap()));
         assert_eq!(lexer.tokenize_next(), Ok(Token::literal(Literal::Int(200))));
         assert_eq!(lexer.tokenize_next(), Ok(Token::from_symbol("{").unwrap()));
-        assert_eq!(lexer.tokenize_next(), Ok(Token::new(TokenType::Whitespace(Whitespace::Newline))));
+        assert_eq!(lexer.tokenize_next(), Ok(Token::Whitespace(Whitespace::Newline)));
         assert_eq!(lexer.tokenize_next(), Ok(Token::identifier("l")));
         assert_eq!(lexer.tokenize_next(), Ok(Token::from_symbol(".").unwrap()));
         assert_eq!(lexer.tokenize_next(), Ok(Token::identifier("append")));
         assert_eq!(lexer.tokenize_next(), Ok(Token::from_symbol("(").unwrap()));
         assert_eq!(lexer.tokenize_next(), Ok(Token::identifier("i")));
         assert_eq!(lexer.tokenize_next(), Ok(Token::from_symbol(")").unwrap()));
-        assert_eq!(lexer.tokenize_next(), Ok(Token::new(TokenType::Whitespace(Whitespace::Newline))));
+        assert_eq!(lexer.tokenize_next(), Ok(Token::Whitespace(Whitespace::Newline)));
         assert_eq!(lexer.tokenize_next(), Ok(Token::from_symbol("}").unwrap()));
-        assert_eq!(lexer.tokenize_next(), Ok(Token::new(TokenType::Whitespace(Whitespace::Newline))));
+        assert_eq!(lexer.tokenize_next(), Ok(Token::Whitespace(Whitespace::Newline)));
     }
 }
 

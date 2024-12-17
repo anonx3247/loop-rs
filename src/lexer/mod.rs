@@ -1,6 +1,6 @@
-mod tokens;
+pub(crate) mod token;
 mod lexer;
 mod test_lexer;
 
-pub use tokens::*;
+pub use token::*;
 pub use lexer::*;

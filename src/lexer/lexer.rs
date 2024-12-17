@@ -1,10 +1,10 @@
-use crate::lexer::tokens::*;
+use crate::lexer::token::*;
 use regex::Regex;
 use std::collections::HashMap;
 
 pub struct Lexer {
     source: String,
-    tokens: Vec<Token>,
+    pub tokens: Vec<Token>,
 }
 
 impl Lexer {
@@ -20,6 +20,13 @@ impl Lexer {
             source: String::new(),
             tokens,
         }
+    }
+
+    pub fn tokenize(&mut self) -> Result<(), String> {
+        while self.source.len() > 0 {
+            self.tokenize_next()?;
+        }
+        Ok(())
     }
 
     pub fn tokenize_next(&mut self) -> Result<Token, String> {
@@ -63,7 +70,7 @@ impl Lexer {
         };
         
         self.source = self.source[index..].to_string();
-        if token != Token::new(TokenType::Whitespace(Whitespace::Space)) {
+        if token != Token::Whitespace(Whitespace::Space) {
             self.tokens.push(token.clone())
         } else {
             return self.tokenize_next()
@@ -83,13 +90,13 @@ impl Lexer {
         Self::tokenize_from_map(s, get_base_types_map())
     }
 
-    fn tokenize_from_map(s: &String, map: HashMap<&str, TokenType>) -> Result<(Token, usize), String> {
-        let mut sorted_map = map.iter().collect::<Vec<(&&str, &TokenType)>>();
+    fn tokenize_from_map(s: &String, map: HashMap<&str, Token>) -> Result<(Token, usize), String> {
+        let mut sorted_map = map.iter().collect::<Vec<(&&str, &Token)>>();
         sorted_map.sort_by(|(k, _), (k2, _)| k.len().cmp(&k2.len()));
         sorted_map.reverse();
         for (base_type, token) in sorted_map {
             if s.starts_with(base_type) {
-                return Ok((Token::new(token.clone()), base_type.len()));
+                return Ok((token.clone(), base_type.len()));
             }
         }
         Err(s.clone())
@@ -105,12 +112,12 @@ impl Lexer {
             Ok((literal, index)) => (literal, index),
             Err(e) => return Err(e),
         };
-        Ok((Token::new(TokenType::Literal(literal)), index))
+        Ok((Token::Literal(literal), index))
     }
 
     pub fn tokenize_comment(comment: &String) -> Result<(Token, usize), String> {
         let (comment, index) = index_until_char(comment.as_str(), '\n');
-        Ok((Token::new(TokenType::Comment(Comment::SingleLine(String::from(comment)))), index))
+        Ok((Token::Comment(Comment::SingleLine(String::from(comment))), index))
     }   
 
     pub fn tokenize_whitespace(whitespace: &String) -> Result<(Token, usize), String> {
@@ -120,9 +127,9 @@ impl Lexer {
             let newlines = captures.get(1).map_or("", |m| m.as_str());
             
             if newlines != "" {
-                return Ok((Token::new(TokenType::Whitespace(Whitespace::Newline)), spaces.len() + newlines.len()));
+                return Ok((Token::Whitespace(Whitespace::Newline), spaces.len() + newlines.len()));
             } else if spaces != "" {
-                return Ok((Token::new(TokenType::Whitespace(Whitespace::Space)), spaces.len()));
+                return Ok((Token::Whitespace(Whitespace::Space), spaces.len()));
             }
         }
 
@@ -131,7 +138,7 @@ impl Lexer {
 
     pub fn tokenize_identifier(identifier: &String) -> Result<(Token, usize), String> {
         let (identifier, index) = index_until_boundary_excluding(identifier.as_str(), vec!['_']);
-        Ok((Token::new(TokenType::Identifier(String::from(identifier))), index))
+        Ok((Token::Identifier(String::from(identifier)), index))
     }
 }
 
