@@ -1,6 +1,6 @@
 use std::io::*;
 use crate::lexer::Lexer;
-use crate::parser::ast::*;
+use crate::ast::*;
 use crate::parser::Parser;
 pub fn repl() {
     loop {
