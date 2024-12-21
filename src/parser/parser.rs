@@ -1,83 +1,124 @@
-use crate::lexer::token::*;
-
-#[derive(Clone)]
-pub struct ASTNode {
-    pub token: Token,
-    pub children: Vec<ASTNode>,
-}
-
-impl ASTNode {
-    pub fn new(token: Token) -> Self {
-        Self {
-            token,
-            children: Vec::new(),
-        }
-    }
-
-    pub fn add_child(&mut self, child: ASTNode) {
-        self.children.push(child);
-    }
-
-    pub fn to_string(&self, indent: usize) -> String {
-        let mut result = String::new();
-        if indent == 1 {
-            result.push_str(&"|--");
-        } else if indent > 1 {
-            result.push_str(&"|   ".repeat(indent - 1));
-            result.push_str(&"|--");
-        }
-        result.push_str(&self.token.to_string());
-        result.push('\n');
-        for child in self.children.iter() {
-            result.push_str(&child.to_string(indent + 1));
-        }
-        result
-    }
-}
-
+use crate::lexer::token;
+use crate::parser::ast;
 pub struct Parser {
-    tokens: Vec<Token>,
+    tokens: Vec<token::Token>,
+}
+
+#[derive(Debug)]
+pub enum ParseError {
+    EmptyTokens,
+    InvalidBracketExpression,
+    InvalidMathExpression,
+    InvalidOperator,
+    InvalidToken,
+    NoMatchingBracket,
+    Error(String),
 }
 
 impl Parser {
-    pub fn new(tokens: Vec<Token>) -> Self {
+    pub fn new(tokens: Vec<token::Token>) -> Self {
         Self { tokens: tokens.into_iter().rev().collect() }
     }
 
-    pub fn parse(&self) -> Result<ASTNode, String> {
-        self.parse_math_expr(&self.tokens)
+    pub fn parse(&self) -> Result<Box<dyn ast::ASTNode>, ParseError> {
+        self.parse_tokens(&self.tokens)
     }
 
-    fn find_first_token(&self, token: &Token, tokens: &[Token]) -> Option<usize> {
+    fn parse_tokens(&self, tokens: &[token::Token]) -> Result<Box<dyn ast::ASTNode>, ParseError> {
+        if tokens.len() == 0 {
+            return Err(ParseError::EmptyTokens);
+        }
+        self.parse_math_expr(tokens)
+    }
+
+    fn find_first_token(&self, token: &token::Token, tokens: &[token::Token]) -> Option<usize> {
         tokens.iter().position(|t| t == token)
     }
 
-    fn parse_math_expr(&self, tokens: &[Token]) -> Result<ASTNode, String> {
+    fn find_first_token_skip_brackets(&self, token: &token::Token, tokens: &[token::Token]) -> Result<Option<usize>, ParseError> {
+        let mut i = 0;
+        while i < tokens.len() {
+            if tokens[i] == *token {
+                return Ok(Some(i));
+            }
+            match tokens[i] {
+                token::Token::Bracket(_) => {
+                    let close_pos = self.find_matching_bracket(&tokens, i)?;
+                    i = close_pos + 1;
+                }
+                _ => i += 1,
+            }
+        }
+        Ok(None)
+    }
+
+    fn parse_math_expr(&self, tokens: &[token::Token]) -> Result<Box<dyn ast::ASTNode>, ParseError> {
         let tokens = tokens.to_vec();
+        if !tokens.is_empty() && tokens[0] == token::Token::Bracket(token::Bracket::CloseParen)
+        && tokens[tokens.len()-1] == token::Token::Bracket(token::Bracket::OpenParen)  {
+            return self.parse_math_expr(&tokens[1..tokens.len()-1]);
+        }
         let operators = [
-            Token::Operator(Operator::Sub),
-            Token::Operator(Operator::Add),
-            Token::Operator(Operator::Div),
-            Token::Operator(Operator::Mul)
+            token::Token::Operator(token::Operator::Sub),
+            token::Token::Operator(token::Operator::Add),
+            token::Token::Operator(token::Operator::Div),
+            token::Token::Operator(token::Operator::Mul),
+            token::Token::Operator(token::Operator::Mod),
+            token::Token::Operator(token::Operator::Pow),
+            token::Token::Operator(token::Operator::BitAnd),
+            token::Token::Operator(token::Operator::BitOr),
+            token::Token::Operator(token::Operator::BitXor),
+            token::Token::Operator(token::Operator::BitShiftLeft),
+            token::Token::Operator(token::Operator::BitShiftRight),
         ];
 
         for op in operators.iter() {
-            if let Some(pos) = self.find_first_token(&op, &tokens) {
-                let mut node = ASTNode::new(tokens[pos].clone());
-                node.add_child(self.parse_math_expr(&tokens[..pos])?);
-                node.add_child(self.parse_math_expr(&tokens[pos + 1..])?);
-                return Ok(node);
+            if let Some(pos) = self.find_first_token_skip_brackets(&op, &tokens)? {
+                let node = ast::BinaryOperation {
+                    left: self.parse_math_expr(&tokens[..pos])?,
+                    right: self.parse_math_expr(&tokens[pos + 1..])?,
+                    operator: match op {
+                        token::Token::Operator(op) => op.clone(),
+                        _ => return Err(ParseError::InvalidOperator)
+                    },
+                };
+                return Ok(Box::new(node));
             }
         }
-
         if tokens.len() == 1 {
-            return Ok(ASTNode::new(tokens[0].clone()));
+            let literal = ast::Literal::from_token(tokens[0].clone())
+                .map_err(|e| ParseError::Error(e.to_string()))?;
+            return Ok(Box::new(literal));
         }
 
-        Err("Invalid math expression".to_string())
+        Err(ParseError::InvalidMathExpression)
     }
 
 
+    fn find_matching_bracket(&self, tokens: &[token::Token], loc: usize) -> Result<usize, ParseError> {
+        let bracket_pairs = [
+            (token::Token::Bracket(token::Bracket::OpenParen), token::Token::Bracket(token::Bracket::CloseParen)),
+            (token::Token::Bracket(token::Bracket::OpenBrace), token::Token::Bracket(token::Bracket::CloseBrace)), 
+            (token::Token::Bracket(token::Bracket::OpenBracket), token::Token::Bracket(token::Bracket::CloseBracket))
+        ];
+        let mut count = 1;
+        let close_pos = loc;
+        let mut open_pos = close_pos;
+        match bracket_pairs.iter().find(|(_open, close)| tokens[close_pos] == *close) {
+            Some((open, close)) => {
+                while count > 0 && open_pos < tokens.len() - 1 {
+                    open_pos += 1;
+                    if tokens[open_pos] == *close {
+                        count += 1;
+                    } else if tokens[open_pos] == *open {
+                        count -= 1;
+                    }
+                }
+                Ok(open_pos)
+            }
+            _ => Err(ParseError::NoMatchingBracket),
+        }
+    }
 }
 
 

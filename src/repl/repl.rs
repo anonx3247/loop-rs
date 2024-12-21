@@ -1,7 +1,6 @@
 use std::io::*;
 use crate::lexer::Lexer;
-use crate::lexer::token::*;
-use crate::parser::ASTNode;
+use crate::parser::ast::*;
 use crate::parser::Parser;
 pub fn repl() {
     loop {
@@ -21,13 +20,15 @@ pub fn repl() {
                     match lexer.tokenize() {
                         Ok(_) => {
                             let parser = Parser::new(lexer.tokens.clone());
-                            if let Ok(ast) = parser.parse() {
-                                println!("{}", ast.to_string(0));
-                                let eval = eval(ast);
-                                println!("{}", eval);
-                            }
-                            else {
-                                println!("Error parsing");
+                            match parser.parse() {
+                                Ok(ast) => {
+                                    println!("{}", ast.to_string(0));
+                                    let eval = eval(ast);
+                                    println!("{}", eval);
+                                }
+                                Err(e) => {
+                                    println!("Error parsing: {:?}", e);
+                                }
                             }
                         }
                         Err(e) => {
@@ -44,14 +45,10 @@ pub fn repl() {
     }
 }
 
-pub fn eval(ast: ASTNode) -> f32 {
-    match ast.token {
-        Token::Literal(Literal::Int(i)) => i as f32,
-        Token::Literal(Literal::Float(f)) => f as f32,
-        Token::Operator(Operator::Add) => eval(ast.children[1].clone()) + eval(ast.children[0].clone()),
-        Token::Operator(Operator::Sub) => eval(ast.children[1].clone()) - eval(ast.children[0].clone()),
-        Token::Operator(Operator::Mul) => eval(ast.children[1].clone()) * eval(ast.children[0].clone()),
-        Token::Operator(Operator::Div) => eval(ast.children[1].clone()) / eval(ast.children[0].clone()),
+pub fn eval(ast: Box<dyn ASTNode>) -> f64 {
+    match ast.eval() {
+        Ok(Value::Int(i)) => i as f64,
+        Ok(Value::Float(f)) => f,
         _ => panic!("Invalid AST node"),
     }
 }

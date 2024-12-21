@@ -79,6 +79,7 @@ pub enum Operator {
     Not,
     BitAnd,
     BitOr,
+    BitXor,
     BitShiftLeft,
     BitShiftRight,
     Assign,
