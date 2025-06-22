@@ -35,9 +35,10 @@ impl Lexer {
             let string_re = Regex::new(r#"^["']"#).unwrap();
             let bool_re = Regex::new(r"^(true|false)").unwrap();
             let none_re = Regex::new(r"^none").unwrap();
-            let number_re = Regex::new(r"^[0-9]+([.][0-9]+)?([eE][+-]?[0-9]+)?").unwrap();
+            let number_re = Regex::new(r"^-?[0-9]+([.][0-9]+)?([eE][+-]?[0-9]+)?").unwrap();
             let comment_re = Regex::new(r"^--").unwrap();
-            let identifier_re = Regex::new(r"^[a-zA-Z][a-zA-Z0-9_]*").unwrap();
+            let identifier_re = Regex::new(r"^[_a-z][a-zA-Z0-9_]*").unwrap();
+            let custom_type_re = Regex::new(r"^[A-Z][a-zA-Z0-9_]*").unwrap();
 
             if whitespace_re.is_match(&self.source) {
                 Self::tokenize_whitespace(&self.source)
@@ -53,10 +54,15 @@ impl Lexer {
                     Ok(r) => Ok(r),
                     Err(e1) => match Self::tokenize_keyword(&self.source) {
                         Ok(r) => Ok(r),
-                        Err(e2) => if identifier_re.is_match(&self.source) {
-                            Self::tokenize_identifier(&self.source)
-                        } else {
-                            Err(e1 + &e2)
+                        Err(e2) => match Self::tokenize_base_type(&self.source) {
+                            Ok(r) => Ok(r),
+                            Err(e3) => if identifier_re.is_match(&self.source) {
+                                Self::tokenize_identifier(&self.source)
+                            } else if custom_type_re.is_match(&self.source) {
+                                Self::tokenize_custom_type(&self.source)
+                            } else {
+                                Err(format!("{}\n{}\n{}", e1, e2, e3))
+                            }
                         }
                     }
                 }
@@ -79,15 +85,24 @@ impl Lexer {
     }
 
     pub fn tokenize_symbol(s: &String) -> Result<(Token, usize), String> {
-        Self::tokenize_from_map(s, get_symbols_map())
+        match Self::tokenize_from_map(s, get_symbols_map()) {
+            Ok(r) => Ok(r),
+            Err(_) => Err(format!("no matching symbol found: {}", preview(s))),
+        }
     }
 
     pub fn tokenize_keyword(s: &String) -> Result<(Token, usize), String> {
-        Self::tokenize_from_map(s, get_keywords_map())
+        match Self::tokenize_from_map(s, get_keywords_map()) {
+            Ok(r) => Ok(r),
+            Err(_) => Err(format!("no matching keyword found: {}", preview(s))),
+        }
     }
 
     pub fn tokenize_base_type(s: &String) -> Result<(Token, usize), String> {
-        Self::tokenize_from_map(s, get_base_types_map())
+        match Self::tokenize_from_map(s, get_base_types_map()) {
+            Ok(r) => Ok(r),
+            Err(_) => Err(format!("no matching base type found: {}", preview(s))),
+        }
     }
 
     fn tokenize_from_map(s: &String, map: HashMap<&str, Token>) -> Result<(Token, usize), String> {
@@ -133,7 +148,7 @@ impl Lexer {
             }
         }
 
-        Err(whitespace.clone())
+        Err(String::from("could not tokenize whitespace"))
     }
 
     pub fn tokenize_identifier(identifier: &String) -> Result<(Token, usize), String> {
@@ -176,17 +191,27 @@ impl Literal {
     fn tokenize_float(literal: &String) -> Result<(Literal, usize), String> {
         let (literal, index) = index_until_boundary_excluding(literal.as_str(), vec!['.']);
 
-        let float_regex = regex::Regex::new(r"^(-?\d+\.?\d*)[eE](-?\d+)$").unwrap();
-        
-        if let Some(captures) = float_regex.captures(literal) {
-            let base = captures[1].parse::<f64>().map_err(|e| e.to_string())?;
-            let exp = captures[2].parse::<i32>().map_err(|e| e.to_string())?;
-            Ok((Literal::Float(base * 10_f64.powf(exp as f64)), index))
+        // first determine if there is a period in the expression:
+        let float_regex = if literal.contains('.') {
+            regex::Regex::new(r"^(-?\d+\.?\d*)[eE]?(-?\d+)?$").unwrap()
         } else {
-            match literal.parse::<f64>() {
-                Ok(f) => Ok((Literal::Float(f), index)),
-                Err(e) => Err(e.to_string()),
-            }
+            regex::Regex::new(r"^(-?\d+)[eE](-?\d+)$").unwrap() // if without period, must have exponent
+        };
+
+        if let Some(captures) = float_regex.captures(literal) {
+            let base = match captures.get(1) {
+                Some(b) => b.as_str().parse::<f64>().map_err(|e| e.to_string()),
+                _ => Err(format!("Invalid float literal (no base): {}", literal.to_string())),
+            }?;
+            let exp = match captures.get(2) {
+                Some(e) => e.as_str().parse::<i32>().map_err(|e| e.to_string()),
+                _ => Ok(0),
+            }?;
+            
+            Ok((Literal::Float(base * 10_f64.powf(exp as f64)), index))
+
+        } else {
+            Err(format!("Invalid float literal: {}", literal.to_string()))
         }
     }
 
@@ -197,10 +222,10 @@ impl Literal {
         if int_regex.is_match(literal) {
             match literal.parse::<i64>() {
                 Ok(i) => Ok((Literal::Int(i), index)),
-                Err(e) => Err(e.to_string()),
+                Err(_) => Err(format!("Invalid integer literal: {}", literal.to_string())),
             }
         } else {
-            Err(format!("Invalid integer literal: {}", literal))
+            Err(format!("Invalid integer literal: {}", literal.to_string()))
         }
     }
     
@@ -213,10 +238,10 @@ impl Literal {
                 let string_content = captures.get(1).unwrap().as_str();
                 Ok((Literal::String(string_content.to_string()), string_content.len() + 2))
             } else {
-                Err(literal.clone())
+                Err(format!("Invalid string literal: {}", literal.to_string()))
             }
         } else {
-            Err(literal.clone())
+            Err(format!("Invalid string literal: {}", literal.to_string()))
         }
     }
     
@@ -224,7 +249,8 @@ impl Literal {
         let true_re = regex::Regex::new(r"^true").unwrap();
         let false_re = regex::Regex::new(r"^false").unwrap();
         let none_re = regex::Regex::new(r"^none").unwrap();
-        let float_re = regex::Regex::new(r"(-?[0-9]+)\.[0-9]+([eE]-?[0-9]+)?").unwrap();
+        // 1.23e-4 or 1.23e4 or 1.23 or 1e-4 or 1e4
+        let float_re = regex::Regex::new(r"^((-?[0-9]+)\.[0-9]+([eE]-?[0-9]+)?|(-?[0-9]+[eE]-?[0-9]+))").unwrap();
 
         if true_re.is_match(literal) {
             Ok((Literal::Bool(true), 4))
@@ -249,7 +275,7 @@ pub fn tokenize_comment(comment: &String) -> Result<(Comment, usize), String> {
             let (comment, index) = index_until_char(comment.as_str(), '\n');
             Ok((Comment::SingleLine(String::from(comment)), index))
         }
-        _ => Err(comment.clone()),
+        _ => Err(format!("Invalid comment: {}", comment)),
     }
 }
 
@@ -260,3 +286,15 @@ fn start_string(source: &String) -> String {
     source[..index].to_string()
 }
 */
+
+pub fn preview(source: &String) -> String {
+    let mut index = 0;
+    let mut char_indices = source.char_indices();
+    while let Some((i, c)) = char_indices.next() {
+        if c.is_whitespace() {
+            break;
+        }
+        index = i + c.len_utf8();
+    }
+    source[..index].to_string()
+}

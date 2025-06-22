@@ -23,8 +23,10 @@ pub fn repl() {
                             match parser.parse() {
                                 Ok(ast) => {
                                     println!("{}", ast.to_string(0));
-                                    let eval = eval(ast);
-                                    println!("{}", eval);
+                                    match ast.eval() {
+                                        Ok(value) => println!("{}", value),
+                                        Err(e) => println!("Error evaluating: {}", e),
+                                    }
                                 }
                                 Err(e) => {
                                     println!("Error parsing: {:?}", e);
@@ -42,13 +44,5 @@ pub fn repl() {
                 break;
             }
         }
-    }
-}
-
-pub fn eval(ast: Box<dyn ASTNode>) -> f64 {
-    match ast.eval() {
-        Ok(Value::Int(i)) => i as f64,
-        Ok(Value::Float(f)) => f,
-        _ => panic!("Invalid AST node"),
     }
 }

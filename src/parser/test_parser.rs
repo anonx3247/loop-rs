@@ -10,11 +10,43 @@ mod test_parser {
         let parser = Parser::new(lexer.tokens.clone());
         let ast = parser.parse().unwrap();
         println!("{}", ast.to_string(0));
+        let ast = ast.children()[0].clone();
         assert_eq!(ast.element(), "Add");
         assert_eq!(ast.children()[0].element(), "Mul");
         assert_eq!(ast.children()[0].children()[0].element(), "Int(3)");
         assert_eq!(ast.children()[0].children()[1].element(), "Int(2)");
         assert_eq!(ast.children()[1].element(), "Int(1)");
+    }
+
+    #[test]
+    fn test_parse_bool_expr() {
+        let mut lexer = Lexer::new("true and false".to_string());
+        lexer.tokenize().unwrap();
+        let parser = Parser::new(lexer.tokens.clone());
+        let ast = parser.parse().unwrap();
+        println!("{}", ast.to_string(0));
+        let ast = ast.children()[0].clone();
+        assert_eq!(ast.element(), "And");
+        assert_eq!(ast.children()[0].element(), "Bool(false)");
+        assert_eq!(ast.children()[1].element(), "Bool(true)");
+    }
+
+    #[test]
+    fn test_parse_bool_expr_with_numbers() {
+        let mut lexer = Lexer::new("(32.5 > 10) or (10 <= 20)".to_string());
+        lexer.tokenize().unwrap();
+        let parser = Parser::new(lexer.tokens.clone());
+        let ast = parser.parse().unwrap();
+        println!("{}", ast.to_string(0));
+        let ast = ast.children()[0].clone();
+        assert_eq!(ast.element(), "Or");
+        assert_eq!(ast.children()[0].element(), "Lte");
+        assert_eq!(ast.children()[0].children()[0].element(), "Float(20)");
+        assert_eq!(ast.children()[0].children()[1].element(), "Float(10)");
+        assert_eq!(ast.children()[1].element(), "Gt");
+        assert_eq!(ast.children()[1].children()[0].element(), "Float(10)");
+        assert_eq!(ast.children()[1].children()[1].element(), "Float(32.5)");
+
     }
 
 
@@ -25,11 +57,35 @@ mod test_parser {
         let parser = Parser::new(lexer.tokens.clone());
         let ast = parser.parse().unwrap();
         println!("{}", ast.to_string(0));
+        let ast = ast.children()[0].clone();
         assert_eq!(ast.element(), "Mul");
         assert_eq!(ast.children()[0].element(), "Int(3)");
         assert_eq!(ast.children()[1].element(), "Add");
         assert_eq!(ast.children()[1].children()[0].element(), "Int(2)");
         assert_eq!(ast.children()[1].children()[1].element(), "Int(1)");
         
+    }
+
+    
+    #[test]
+    fn test_parse_assignment_with_type() {
+        let mut lexer = Lexer::new("mut a: i32 = 1".to_string());
+        lexer.tokenize().unwrap();
+        let parser = Parser::new(lexer.tokens.clone());
+        let ast = parser.parse().unwrap();
+        println!("{}", ast.to_string(0));
+        let ast = ast.children()[0].clone();
+        assert_eq!(ast.element(), "mut a : I32 =");
+        assert_eq!(ast.children()[0].element(), "Int(1)");
+    }
+
+    #[test]
+    fn test_parse_assignment_without_type() {
+        let mut lexer = Lexer::new("mut a := 1".to_string());
+        lexer.tokenize().unwrap();
+        println!("{:?}", lexer.tokens);
+        let parser = Parser::new(lexer.tokens.clone());
+        let ast = parser.parse().unwrap();
+        println!("{}", ast.to_string(0));
     }
 }

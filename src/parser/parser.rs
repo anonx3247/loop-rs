@@ -1,9 +1,6 @@
-use assignment::VariableAssignment;
-
 use crate::lexer::token;
 use crate::ast::*;
 
-use self::token::VariableDeclaration;
 pub struct Parser {
     tokens: Vec<token::Token>,
 }
@@ -11,7 +8,7 @@ pub struct Parser {
 #[derive(Debug)]
 pub enum ParseError {
     EmptyTokens,
-    InvalidMathExpression,
+    InvalidExpression,
     InvalidOperator,
     InvalidToken,
     NoMatchingBracket,
@@ -28,19 +25,32 @@ impl Parser {
     }
 
     fn parse_tokens(&self, tokens: &[token::Token]) -> Result<Box<dyn ast::ASTNode>, ParseError> {
+        println!("parsing tokens: {:?}", tokens);
+        let mut result = RootASTNode::new();
+        let mut pos = 0;
         if tokens.len() == 0 {
             return Err(ParseError::EmptyTokens);
         }
-        match tokens[0] {
-            token::Token::VariableDeclaration(token::VariableDeclaration::Mut) | token::Token::Identifier(_) =>
-                self.parse_assignment(tokens),
-            _ => self.parse_math_expr(tokens),
+        let mut it = 0;
+        let mut tokens_to_parse = tokens.to_vec();
+        while pos < tokens.len() && it < 100 {
+            let (node, new_pos) = self.parse_expr(&tokens_to_parse[..]);
+            match node {
+                Ok(node) => result.push(node),
+                Err(e) => return Err(e),
+            };
+            pos = new_pos;
+            tokens_to_parse = tokens_to_parse[pos..].to_vec();
+            it += 1;
         }
+        Ok(Box::new(result))
     }
 
+    /*
     fn find_first_token(&self, token: &token::Token, tokens: &[token::Token]) -> Option<usize> {
         tokens.iter().position(|t| t == token)
     }
+     */
 
     fn find_first_token_skip_brackets(&self, token: &token::Token, tokens: &[token::Token]) -> Result<Option<usize>, ParseError> {
         let mut i = 0;
@@ -59,75 +69,175 @@ impl Parser {
         Ok(None)
     }
 
-    fn parse_assignment(&self, tokens: &[token::Token]) -> Result<Box<dyn ast::ASTNode>, ParseError> {
-        if tokens.is_empty() {
-            Err(ParseError::EmptyTokens)
-        } else {
-            let mut current = 0;
-            let mutable = match tokens[0] {
-                token::Token::Identifier(_) => false,
-                token::Token::VariableDeclaration(token::VariableDeclaration::Mut) => true,
-                _ => return Err(ParseError::InvalidToken),
-            };
+    fn parse_expr(&self, tokens: &[token::Token]) -> (Result<Box<dyn ast::ASTNode>, ParseError>, usize) {
+        let assign_tokens = [
+            token::Token::Operator(token::Operator::Assign),
+            token::Token::Operator(token::Operator::EqualSign),
+            token::Token::VariableDeclaration(token::VariableDeclaration::Mut)
+        ];
 
-            current = if mutable { 1 } else { 0 };
+        let bool_tokens = [
+            token::Token::Operator(token::Operator::And),
+            token::Token::Operator(token::Operator::Or),
+            token::Token::Operator(token::Operator::Not),
+            token::Token::Operator(token::Operator::Eq),
+            token::Token::Operator(token::Operator::Neq),
+            token::Token::Operator(token::Operator::Gt),
+            token::Token::Operator(token::Operator::Gte),
+            token::Token::Operator(token::Operator::Lt),
+            token::Token::Operator(token::Operator::Lte),
+        ];
 
-            let identifier = match tokens[current] {
-                token::Token::Identifier(_) => tokens[current].to_string(),
-                _ => return Err(ParseError::InvalidToken),
-            };
-
-            current += 1;
-
-            let mut type_ = match tokens[current] {
-                token::Token::Punctuation(token::Punctuation::Colon) => match &tokens[current + 1]  {
-                    token::Token::Type(t) => Some(t.clone()),
-                    _ => return Err(ParseError::InvalidToken),
-                },
-                _ => None,                    
-            };
-
-            current = if type_.is_none() {
-                current + 2
-            } else {
-                current + 1
-            };
-
-            let expr = match tokens[current] {
-                token::Token::Operator(token::Operator::Assign) => self.parse_math_expr(&tokens[current+1..])?,
-                _ => return Err(ParseError::InvalidToken), // for now we only support assignment
-            };
-
-            if type_.is_none() {
-                let val = expr.eval().or_else(|e| Err(ParseError::Error(e.to_string())))?;
-                type_ = match val {
-                    Value::Int(_) => Some(token::Type::Int),
-                    Value::Float(_) => Some(token::Type::Float),
-                    Value::Bool(_) => Some(token::Type::Bool),
-                    Value::String(_) => Some(token::Type::String),
-                };
+        for op in assign_tokens.iter() {
+            if let Ok(Some(pos)) = self.find_first_token_skip_brackets(&op, &tokens) {
+                return self.parse_assignment_expr(&tokens);
             }
-
-            let type_ = match type_ {
-                Some(t) => t,
-                _ => return Err(ParseError::Error("Type not found".to_string())), // for now we only support assignment
-            };
-            
-            Ok(Box::new(assignment::VariableAssignment {
-                mutable: mutable,
-                type_: type_,
-                name: identifier,
-                expr: expr,
-            }))
         }
+
+        for op in bool_tokens.iter() {
+            if let Ok(Some(pos)) = self.find_first_token_skip_brackets(&op, &tokens) {
+                return self.parse_bool_expr(&tokens);
+            }
+        }
+        
+        self.parse_math_expr(tokens)
     }
 
-    fn parse_math_expr(&self, tokens: &[token::Token]) -> Result<Box<dyn ast::ASTNode>, ParseError> {
+    fn parse_binary_operator_expr(&self, tokens: &[token::Token], 
+        operators: &[token::Token], 
+        left_parser: Option<fn(&[token::Token]) -> (Result<Box<dyn ast::ASTNode>, ParseError>, usize)>, 
+        right_parser: Option<fn(&[token::Token]) -> (Result<Box<dyn ast::ASTNode>, ParseError>, usize)>
+        ) -> (Result<Box<dyn ast::ASTNode>, ParseError>, usize)
+        {
         let tokens = tokens.to_vec();
         if !tokens.is_empty() && tokens[0] == token::Token::Bracket(token::Bracket::CloseParen)
         && tokens[tokens.len()-1] == token::Token::Bracket(token::Bracket::OpenParen)  {
-            return self.parse_math_expr(&tokens[1..tokens.len()-1]);
+            return (self.parse_binary_operator_expr(&tokens[1..tokens.len()-1], operators, left_parser, right_parser).0, tokens.len());
         }
+        for op in operators.iter() {
+            if let Ok(Some(pos)) = self.find_first_token_skip_brackets(&op, &tokens) {
+                let (left, left_pos) = match left_parser {
+                    Some(parser) => parser(&tokens[..pos]),
+                    _ => self.parse_binary_operator_expr(&tokens[..pos], operators, left_parser, right_parser),
+                };
+                let (right, right_pos) = match right_parser {
+                    Some(parser) => parser(&tokens[pos + 1..]),
+                    _ => self.parse_binary_operator_expr(&tokens[pos + 1..], operators, left_parser, right_parser),
+                };
+                let node = binary_operation::BinaryOperation {
+                    left: match left {
+                        Ok(node) => node,
+                        Err(e) => return (Err(e), left_pos),
+                    },
+                    right: match right {
+                        Ok(node) => node,
+                        Err(e) => return (Err(e), right_pos + pos + 1),
+                    },
+                    operator: match op {
+                        token::Token::Operator(op) => op.clone(),
+                        _ => return (Err(ParseError::InvalidOperator), pos)
+                    },
+                };
+                return (Ok(Box::new(node)), right_pos + pos + 1);
+            }
+        }
+        if tokens.len() == 1 {
+            match tokens[0] {
+                token::Token::Identifier(_) => {
+                    let identifier = identifier::Identifier::from_token(tokens[0].clone())
+                        .map_err(|e| ParseError::Error(e.to_string()));
+                    return (match identifier {
+                        Ok(identifier) => Ok(Box::new(identifier)),
+                        Err(e) => Err(e),
+                    }, 1);
+                }
+                _ => {
+                    let literal = literal::Literal::from_token(tokens[0].clone())
+                        .map_err(|e| ParseError::Error(e.to_string()));
+                    return (match literal {
+                        Ok(literal) => Ok(Box::new(literal)),
+                        Err(e) => Err(e),
+                    }, 1);
+                }
+            }
+        }
+        (Err(ParseError::InvalidExpression), 0)
+    }
+
+    fn parse_assignment_expr(&self, tokens: &[token::Token]) -> (Result<Box<dyn ast::ASTNode>, ParseError>, usize) {
+        let operators = [
+            token::Token::Operator(token::Operator::Assign),
+            token::Token::Operator(token::Operator::EqualSign)
+        ];
+
+        for op in operators.iter() {
+            if let Ok(Some(pos)) = self.find_first_token_skip_brackets(&op, &tokens) {
+                let (left, left_pos) = self.parse_expr(&tokens[..pos]);
+                let left = match left {
+                    Ok(node) => node,
+                    Err(e) => return (Err(e), left_pos),
+                };
+                if op == &token::Token::Operator(token::Operator::Assign) {
+                    // make sure the previous token is an identifier and the one before it is either a 'mut' or anything else
+
+                    // [mut] identifier = expr
+                    if let Some(token::Token::Identifier(identifier)) = tokens.get(pos + 1) {
+                        if let Some(token::Token::VariableDeclaration(token::VariableDeclaration::Mut)) = tokens.get(pos + 2) {
+                            let node = assignment::VariableAssignment {
+                                mutable: true,
+                                type_: None,
+                                name: identifier.clone(),
+                                expr: left,
+                            };
+                            return (Ok(Box::new(node)), pos + 3);
+                        } else {
+                            let node = assignment::VariableAssignment {
+                                mutable: false,
+                                type_: None,
+                                name: identifier.clone(),
+                                expr: left,
+                            };
+                            return (Ok(Box::new(node)), pos + 2);
+                        }
+                    }
+                } else {
+                    // [mut] identifier: type = expr
+                    if let Some(token::Token::Type(type_)) = tokens.get(pos + 1) {
+                        if let Some(token::Token::Punctuation(token::Punctuation::Colon)) = tokens.get(pos + 2) {
+                            if let Some(token::Token::Identifier(identifier)) = tokens.get(pos + 3) {
+                                if let Some(token::Token::VariableDeclaration(token::VariableDeclaration::Mut)) = tokens.get(pos + 4) {
+                                    let node = assignment::VariableAssignment {
+                                        mutable: true,
+                                        type_: Some(type_.clone()),
+                                        name: identifier.clone(),
+                                        expr: left,
+                                    };
+                                    return (Ok(Box::new(node)), pos + 5);
+                                } else {
+                                    let node = assignment::VariableAssignment {
+                                        mutable: false,
+                                        type_: Some(type_.clone()),
+                                        name: identifier.clone(),
+                                        expr: left,
+                                    };
+                                    return (Ok(Box::new(node)), pos + 3);
+                                }
+                            }
+                        } else {
+                            return (Err(ParseError::InvalidToken), pos + 2);
+                        }
+                    } else {
+                        return (Err(ParseError::InvalidToken), pos + 1);
+                    }
+                }
+            }
+        }
+
+        (Err(ParseError::InvalidExpression), 0)
+        
+    }
+
+    fn parse_math_expr(&self, tokens: &[token::Token]) -> (Result<Box<dyn ast::ASTNode>, ParseError>, usize) {
         let operators = [
             token::Token::Operator(token::Operator::Sub),
             token::Token::Operator(token::Operator::Add),
@@ -142,26 +252,22 @@ impl Parser {
             token::Token::Operator(token::Operator::BitShiftRight),
         ];
 
-        for op in operators.iter() {
-            if let Some(pos) = self.find_first_token_skip_brackets(&op, &tokens)? {
-                let node = binary_operation::BinaryOperation {
-                    left: self.parse_math_expr(&tokens[..pos])?,
-                    right: self.parse_math_expr(&tokens[pos + 1..])?,
-                    operator: match op {
-                        token::Token::Operator(op) => op.clone(),
-                        _ => return Err(ParseError::InvalidOperator)
-                    },
-                };
-                return Ok(Box::new(node));
-            }
-        }
-        if tokens.len() == 1 {
-            let literal = literal::Literal::from_token(tokens[0].clone())
-                .map_err(|e| ParseError::Error(e.to_string()))?;
-            return Ok(Box::new(literal));
-        }
+        self.parse_binary_operator_expr(tokens, &operators, None, None)
+    }
 
-        Err(ParseError::InvalidMathExpression)
+    fn parse_bool_expr(&self, tokens: &[token::Token]) -> (Result<Box<dyn ast::ASTNode>, ParseError>, usize) {
+        let operators = [
+            token::Token::Operator(token::Operator::And),
+            token::Token::Operator(token::Operator::Or),
+            token::Token::Operator(token::Operator::Not),
+            token::Token::Operator(token::Operator::Eq),
+            token::Token::Operator(token::Operator::Neq),
+            token::Token::Operator(token::Operator::Gt),
+            token::Token::Operator(token::Operator::Gte),
+            token::Token::Operator(token::Operator::Lt),
+            token::Token::Operator(token::Operator::Lte),
+        ];
+        self.parse_binary_operator_expr(tokens, &operators, None, None)
     }
 
 

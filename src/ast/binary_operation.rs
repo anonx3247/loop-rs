@@ -60,6 +60,10 @@ impl ASTNode for BinaryOperation {
                             token::Operator::BitAnd => Value::Int(r & l),
                             token::Operator::BitOr => Value::Int(r | l),
                             token::Operator::BitXor => Value::Int(r ^ l),
+                            token::Operator::Gt => Value::Bool(r > l),
+                            token::Operator::Lt => Value::Bool(r < l),
+                            token::Operator::Gte => Value::Bool(r >= l),
+                            token::Operator::Lte => Value::Bool(r <= l),
                             _ => return Err(Error::RuntimeError(format!("Invalid operator: {:?}", self.operator))),
                         }
                     }
@@ -71,6 +75,16 @@ impl ASTNode for BinaryOperation {
                             token::Operator::Div => Value::Float(r / l),
                             token::Operator::Mod => Value::Float(r % l),
                             token::Operator::Pow => Value::Float(r.powf(*l)),
+                            token::Operator::Gt => Value::Bool(r > l),
+                            token::Operator::Lt => Value::Bool(r < l),
+                            token::Operator::Gte => Value::Bool(r >= l),
+                            token::Operator::Lte => Value::Bool(r <= l),
+                            _ => return Err(Error::RuntimeError(format!("Invalid operator: {:?}", self.operator))),
+                        }
+                    }
+                    (Value::String(l), Value::String(r)) => {
+                        match self.operator {
+                            token::Operator::Add => Value::String(r.clone() + &l.clone()),
                             _ => return Err(Error::RuntimeError(format!("Invalid operator: {:?}", self.operator))),
                         }
                     }

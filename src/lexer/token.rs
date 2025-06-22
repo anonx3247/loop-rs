@@ -83,6 +83,7 @@ pub enum Operator {
     BitShiftLeft,
     BitShiftRight,
     Assign,
+    EqualSign,
     PlusAssign,
     MinusAssign,
     MulAssign,
@@ -139,10 +140,9 @@ pub enum VariableDeclaration {
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum TypeDeclaration {
-    Enum,
-    Struct,
+    Component,
+    Type,
     Required,
-    Class,
     Abstract,
     Implement,
 }
@@ -214,20 +214,14 @@ pub fn get_keywords_map() -> HashMap<&'static str, Token> {
     keywords.insert("import", Token::Module(Module::Import));
     keywords.insert("from", Token::Module(Module::From));
     keywords.insert("required", Token::TypeDeclaration(TypeDeclaration::Required));
-    keywords.insert("struct", Token::TypeDeclaration(TypeDeclaration::Struct));
-    keywords.insert("class", Token::TypeDeclaration(TypeDeclaration::Class));
     keywords.insert("abs", Token::TypeDeclaration(TypeDeclaration::Abstract));
     keywords.insert("impl", Token::TypeDeclaration(TypeDeclaration::Implement));
-    keywords.insert("enum", Token::TypeDeclaration(TypeDeclaration::Enum));
     keywords.insert("fn", Token::Function(Function::Fn));
     keywords.insert("let", Token::VariableDeclaration(VariableDeclaration::Let));
     keywords.insert("mut", Token::VariableDeclaration(VariableDeclaration::Mut));
-    keywords.insert("getter", Token::Function(Function::Getter));
-    keywords.insert("setter", Token::Function(Function::Setter));
-    keywords.insert("get", Token::Function(Function::Get));
-    keywords.insert("set", Token::Function(Function::Set));
     keywords.insert("if", Token::Conditional(Conditional::If));
     keywords.insert("else", Token::Conditional(Conditional::Else));
+    keywords.insert("elif", Token::Conditional(Conditional::Elif));
     keywords.insert("match", Token::Conditional(Conditional::Match));
     keywords.insert("for", Token::Loop(Loop::For));
     keywords.insert("in", Token::Loop(Loop::In));
@@ -237,6 +231,9 @@ pub fn get_keywords_map() -> HashMap<&'static str, Token> {
     keywords.insert("break", Token::Loop(Loop::Break));
     keywords.insert("continue", Token::Loop(Loop::Continue));
     keywords.insert("dbg", Token::Debug);
+    keywords.insert("type", Token::TypeDeclaration(TypeDeclaration::Type));
+    keywords.insert("comp", Token::TypeDeclaration(TypeDeclaration::Component));
+    keywords.insert("as", Token::Module(Module::As));
     keywords
 }
 
@@ -279,11 +276,14 @@ pub fn get_symbols_map() -> HashMap<&'static str, Token> {
     symbols.insert("[", Token::Bracket(Bracket::OpenBracket));
     symbols.insert("]", Token::Bracket(Bracket::CloseBracket));
     symbols.insert(":=", Token::Operator(Operator::Assign));
+    symbols.insert("=", Token::Operator(Operator::EqualSign));
     symbols.insert("+=", Token::Operator(Operator::PlusAssign));
     symbols.insert("-=", Token::Operator(Operator::MinusAssign));
     symbols.insert("*=", Token::Operator(Operator::MulAssign));
     symbols.insert("/=", Token::Operator(Operator::DivAssign));
     symbols.insert("%=", Token::Operator(Operator::ModAssign));
+    symbols.insert("?", Token::Punctuation(Punctuation::Question));
+    symbols.insert("!", Token::Punctuation(Punctuation::Exclamation));
     symbols
 }
 

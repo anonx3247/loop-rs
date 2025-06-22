@@ -35,3 +35,40 @@ pub trait ASTNode {
     fn eval(&self) -> Result<Value, Error>;
     fn clone(&self) -> Box<dyn ASTNode>;
 }
+
+pub struct RootASTNode {
+    pub children: Vec<Box<dyn ASTNode>>,
+}
+
+impl RootASTNode {
+    pub fn new() -> Self {
+        Self { children: Vec::new() }
+    }
+
+    pub fn push(&mut self, node: Box<dyn ASTNode>) {
+        self.children.push(node);
+    }
+}
+
+impl ASTNode for RootASTNode {
+    fn children(&self) -> Vec<Box<dyn ASTNode>> {
+        self.children.iter().map(|c| c.as_ref().clone()).collect()
+    }
+
+    fn element(&self) -> String {
+        "Root".to_string()
+    }
+
+    fn eval(&self) -> Result<Value, Error> {
+        if self.children.len() == 1 {
+            self.children[0].eval()
+        } else {
+            Ok(Value::Int(0))
+        }
+    }
+
+    fn clone(&self) -> Box<dyn ASTNode> {
+        let children = self.children.iter().map(|c| c.as_ref().clone()).collect();
+        Box::new(RootASTNode { children })
+    }
+}

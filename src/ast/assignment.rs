@@ -4,7 +4,7 @@ use crate::lexer::token::Type;
 
 pub struct VariableAssignment {
     pub mutable: bool,
-    pub type_: Type,
+    pub type_: Option<Type>,
     pub name: String,
     pub expr: Box<dyn ASTNode>,
 }
@@ -12,12 +12,19 @@ pub struct VariableAssignment {
 impl ASTNode for VariableAssignment {
     fn element(&self) -> String {
         let mutable = if self.mutable { "mut" } else { "const" };
-        let type_ = format!("{:?}", self.type_);
+        let type_ = match &self.type_ {
+            Some(type_) => format!("{:?}", type_),
+            _ => "[inferred]".to_string(),
+        };
         format!("{} {} : {} =", mutable, self.name, type_)
     }
 
     fn children(&self) -> Vec<Box<dyn ASTNode>> {
-        self.expr.children()
+        if self.expr.children().len() > 0 {
+            self.expr.children()
+        } else {
+            vec![self.expr.clone()]
+        }
     }
 
     fn clone(&self) -> Box<dyn ASTNode> {

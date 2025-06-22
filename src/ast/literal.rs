@@ -3,9 +3,6 @@ use crate::lexer::token;
 pub struct Literal(Value);
 
 impl Literal {
-    pub fn new(value: Value) -> Self {
-        Self(value)
-    }
 
     pub fn from_token(token: token::Token) -> Result<Self, Error> {
         Ok(Self(match token {
