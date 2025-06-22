@@ -1,4 +1,5 @@
 use crate::ast::{ASTNode,value::Value,Error};
+use crate::environment::environment::Environment;
 use crate::lexer::token;
 
 pub struct BinaryOperation {
@@ -27,9 +28,9 @@ impl ASTNode for BinaryOperation {
         })
     }
 
-    fn eval(&self) -> Result<Value, Error> {
-        let left = self.left.eval()?;
-        let right = self.right.eval()?;
+    fn eval(&self, env: &mut Environment) -> Result<Value, Error> {
+        let left = self.left.eval(env)?;
+        let right = self.right.eval(env)?;
         Ok(match self.operator {
             token::Operator::Add 
             | token::Operator::Sub 

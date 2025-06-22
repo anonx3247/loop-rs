@@ -30,6 +30,16 @@ impl Lexer {
     }
 
     pub fn tokenize_next(&mut self) -> Result<Token, String> {
+        let (token, _) = self.tokenize_next_with_index()?;
+        if token != Token::Whitespace(Whitespace::Space) {
+            self.tokens.push(token.clone())
+        } else {
+            return self.tokenize_next()
+        }
+        Ok(token)
+    }
+
+    pub fn tokenize_next_with_index(&mut self) -> Result<(Token, usize), String> {
         let result = {
             let whitespace_re = Regex::new(r"^[\s\t\n]+").unwrap();
             let string_re = Regex::new(r#"^["']"#).unwrap();
@@ -76,12 +86,7 @@ impl Lexer {
         };
         
         self.source = self.source[index..].to_string();
-        if token != Token::Whitespace(Whitespace::Space) {
-            self.tokens.push(token.clone())
-        } else {
-            return self.tokenize_next()
-        }
-        Ok(token)
+        Ok((token, index))
     }
 
     pub fn tokenize_symbol(s: &String) -> Result<(Token, usize), String> {

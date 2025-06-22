@@ -1,9 +1,10 @@
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Int(i64),
     Float(f64),
     String(String),
     Bool(bool),
+    None,
 }
 
 impl std::fmt::Display for Value {
@@ -13,6 +14,7 @@ impl std::fmt::Display for Value {
             Value::Float(fl) => write!(f, "{}", fl),
             Value::String(s) => write!(f, "{}", s),
             Value::Bool(b) => write!(f, "{}", b),
+            Value::None => write!(f, "none"),
         }
     }
 }

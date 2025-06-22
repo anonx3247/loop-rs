@@ -1,15 +1,15 @@
 #[cfg(test)]
 mod test_parser {
-    use crate::parser::*;
+    use crate::parser::parser::*;
     use crate::lexer::*;
 
     #[test]
     fn test_parse_math_expr() {
         let mut lexer = Lexer::new("1 + 2 * 3".to_string());
         lexer.tokenize().unwrap();
-        let parser = Parser::new(lexer.tokens.clone());
+        let mut parser = Parser::new(lexer.tokens.clone());
         let ast = parser.parse().unwrap();
-        println!("{}", ast.to_string(0));
+        println!("{}", ast.to_string());
         let ast = ast.children()[0].clone();
         assert_eq!(ast.element(), "Add");
         assert_eq!(ast.children()[0].element(), "Mul");
@@ -22,9 +22,9 @@ mod test_parser {
     fn test_parse_bool_expr() {
         let mut lexer = Lexer::new("true and false".to_string());
         lexer.tokenize().unwrap();
-        let parser = Parser::new(lexer.tokens.clone());
+        let mut parser = Parser::new(lexer.tokens.clone());
         let ast = parser.parse().unwrap();
-        println!("{}", ast.to_string(0));
+        println!("{}", ast.to_string());
         let ast = ast.children()[0].clone();
         assert_eq!(ast.element(), "And");
         assert_eq!(ast.children()[0].element(), "Bool(false)");
@@ -35,16 +35,19 @@ mod test_parser {
     fn test_parse_bool_expr_with_numbers() {
         let mut lexer = Lexer::new("(32.5 > 10) or (10 <= 20)".to_string());
         lexer.tokenize().unwrap();
-        let parser = Parser::new(lexer.tokens.clone());
-        let ast = parser.parse().unwrap();
-        println!("{}", ast.to_string(0));
+        let mut parser = Parser::new(lexer.tokens.clone());
+        let ast = parser.parse().unwrap_or_else(|e| {
+            println!("{:?}", e);
+            panic!("Error parsing expression");
+        });
+        println!("{}", ast.to_string());
         let ast = ast.children()[0].clone();
         assert_eq!(ast.element(), "Or");
         assert_eq!(ast.children()[0].element(), "Lte");
-        assert_eq!(ast.children()[0].children()[0].element(), "Float(20)");
-        assert_eq!(ast.children()[0].children()[1].element(), "Float(10)");
+        assert_eq!(ast.children()[0].children()[0].element(), "Int(20)");
+        assert_eq!(ast.children()[0].children()[1].element(), "Int(10)");
         assert_eq!(ast.children()[1].element(), "Gt");
-        assert_eq!(ast.children()[1].children()[0].element(), "Float(10)");
+        assert_eq!(ast.children()[1].children()[0].element(), "Int(10)");
         assert_eq!(ast.children()[1].children()[1].element(), "Float(32.5)");
 
     }
@@ -54,9 +57,9 @@ mod test_parser {
     fn test_parse_math_with_parentheses() {
         let mut lexer = Lexer::new("(1 + 2) * 3".to_string());
         lexer.tokenize().unwrap();
-        let parser = Parser::new(lexer.tokens.clone());
+        let mut parser = Parser::new(lexer.tokens.clone());
         let ast = parser.parse().unwrap();
-        println!("{}", ast.to_string(0));
+        println!("{}", ast.to_string());
         let ast = ast.children()[0].clone();
         assert_eq!(ast.element(), "Mul");
         assert_eq!(ast.children()[0].element(), "Int(3)");
@@ -71,9 +74,9 @@ mod test_parser {
     fn test_parse_assignment_with_type() {
         let mut lexer = Lexer::new("mut a: i32 = 1".to_string());
         lexer.tokenize().unwrap();
-        let parser = Parser::new(lexer.tokens.clone());
+        let mut parser = Parser::new(lexer.tokens.clone());
         let ast = parser.parse().unwrap();
-        println!("{}", ast.to_string(0));
+            println!("{}", ast.to_string());
         let ast = ast.children()[0].clone();
         assert_eq!(ast.element(), "mut a : I32 =");
         assert_eq!(ast.children()[0].element(), "Int(1)");
@@ -84,8 +87,8 @@ mod test_parser {
         let mut lexer = Lexer::new("mut a := 1".to_string());
         lexer.tokenize().unwrap();
         println!("{:?}", lexer.tokens);
-        let parser = Parser::new(lexer.tokens.clone());
+        let mut parser = Parser::new(lexer.tokens.clone());
         let ast = parser.parse().unwrap();
-        println!("{}", ast.to_string(0));
+        println!("{}", ast.to_string());
     }
 }

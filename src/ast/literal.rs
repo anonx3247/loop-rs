@@ -1,4 +1,5 @@
 use crate::ast::{ASTNode,Value, Error};
+use crate::environment::environment::Environment;
 use crate::lexer::token;
 pub struct Literal(Value);
 
@@ -24,7 +25,7 @@ impl ASTNode for Literal {
         vec![]
     }
 
-    fn eval(&self) -> Result<Value, Error> {
+    fn eval(&self, _env: &mut Environment) -> Result<Value, Error> {
         Ok(self.0.clone())
     }
 

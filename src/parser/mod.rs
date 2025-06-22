@@ -1,6 +1,8 @@
 pub mod parser;
-mod test_parser;
+pub mod test_parser;
 
-
-pub use parser::*;
-// pub use test_parser::*;
+mod assignment;
+mod binary;
+mod conditional;
+mod expr;
+mod utils;

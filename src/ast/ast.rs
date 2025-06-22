@@ -1,5 +1,7 @@
 use crate::ast::value::Value;
+use crate::environment::environment::Environment;
 
+#[derive(Debug)]
 pub enum Error {
     SyntaxError(String),
     RuntimeError(String),
@@ -17,7 +19,7 @@ impl std::fmt::Display for Error {
 pub trait ASTNode {
     fn children(&self) -> Vec<Box<dyn ASTNode>>;
     fn element(&self) -> String;
-    fn to_string(&self, indent: usize) -> String {
+    fn print_tree(&self, indent: usize) -> String {
         let mut result = String::new();
         if indent == 1 {
             result.push_str(&"|--");
@@ -28,11 +30,14 @@ pub trait ASTNode {
         result.push_str(&self.element());
         result.push('\n');
         for child in self.children() {
-            result.push_str(&child.to_string(indent + 1));
+            result.push_str(&child.print_tree(indent + 1));
         }
         result
     }
-    fn eval(&self) -> Result<Value, Error>;
+    fn to_string(&self) -> String {
+        self.print_tree(0)
+    }
+    fn eval(&self, env: &mut Environment) -> Result<Value, Error>;
     fn clone(&self) -> Box<dyn ASTNode>;
 }
 
@@ -59,11 +64,15 @@ impl ASTNode for RootASTNode {
         "Root".to_string()
     }
 
-    fn eval(&self) -> Result<Value, Error> {
+    fn eval(&self, env: &mut Environment) -> Result<Value, Error> {
         if self.children.len() == 1 {
-            self.children[0].eval()
+            self.children[0].eval(env)
         } else {
-            Ok(Value::Int(0))
+            let mut result = Ok(Value::Int(0));
+            for child in &self.children {
+                result = child.eval(env);
+            }
+            result
         }
     }
 

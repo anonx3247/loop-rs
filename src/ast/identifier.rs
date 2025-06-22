@@ -1,4 +1,5 @@
 use crate::ast::{ASTNode,Value, Error};
+use crate::environment::environment::Environment;
 use crate::lexer::token;
 
 pub struct Identifier(String);
@@ -22,8 +23,8 @@ impl ASTNode for Identifier {
         vec![]
     }
 
-    fn eval(&self) -> Result<Value, Error> {
-        Ok(Value::String(self.0.clone()))
+    fn eval(&self, env: &mut Environment) -> Result<Value, Error> {
+        env.lookup(&self.0)
     }
 
     fn clone(&self) -> Box<dyn ASTNode> {

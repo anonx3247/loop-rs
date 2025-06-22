@@ -1,5 +1,6 @@
 use crate::ast::{ASTNode,Error};
 use crate::ast::value::Value;
+use crate::environment::environment::Environment;
 use crate::lexer::token::Type;
 
 pub struct VariableAssignment {
@@ -37,8 +38,20 @@ impl ASTNode for VariableAssignment {
         Box::new(new_assignment)
     }
 
-    fn eval(&self) -> Result<Value, Error> {
-        self.expr.eval()
+    fn eval(&self, env: &mut Environment) -> Result<Value, Error> {
+        let value = self.expr.eval(env)?;
+        if let Ok(mutable) = env.lookup_mut(&self.name) {
+            if !mutable {
+                return Err(Error::RuntimeError(format!(
+                    "Cannot assign to immutable variable '{}'",
+                    self.name
+                )));
+            }
+            env.assign(&self.name, value.clone())?;
+        } else {
+            env.declare(self.name.clone(), value.clone(), self.mutable)?;
+        }
+        Ok(value)
     }
 
 }
