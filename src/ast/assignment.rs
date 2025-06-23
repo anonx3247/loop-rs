@@ -21,11 +21,7 @@ impl ASTNode for VariableAssignment {
     }
 
     fn children(&self) -> Vec<Box<dyn ASTNode>> {
-        if self.expr.children().len() > 0 {
-            self.expr.children()
-        } else {
-            vec![self.expr.clone()]
-        }
+        vec![self.expr.clone()]
     }
 
     fn clone(&self) -> Box<dyn ASTNode> {
@@ -51,7 +47,7 @@ impl ASTNode for VariableAssignment {
         } else {
             env.declare(self.name.clone(), value.clone(), self.mutable)?;
         }
-        Ok(value)
+        Ok(Value::Bool(true))
     }
 
 }

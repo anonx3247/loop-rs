@@ -50,42 +50,42 @@ impl ASTNode for BinaryOperation {
                 match (&left, &right) {
                     (Value::Int(l), Value::Int(r)) => {
                         match self.operator {
-                            token::Operator::Add => Value::Int(r + l),
-                            token::Operator::Sub => Value::Int(r - l),
-                            token::Operator::Mul => Value::Int(r * l),
-                            token::Operator::Div => Value::Int(r / l),
-                            token::Operator::Mod => Value::Int(r % l),
-                            token::Operator::Pow => Value::Int(r.pow(*l as u32)),
-                            token::Operator::BitShiftLeft => Value::Int(r << l),
-                            token::Operator::BitShiftRight => Value::Int(r >> l),
-                            token::Operator::BitAnd => Value::Int(r & l),
-                            token::Operator::BitOr => Value::Int(r | l),
-                            token::Operator::BitXor => Value::Int(r ^ l),
-                            token::Operator::Gt => Value::Bool(r > l),
-                            token::Operator::Lt => Value::Bool(r < l),
-                            token::Operator::Gte => Value::Bool(r >= l),
-                            token::Operator::Lte => Value::Bool(r <= l),
+                            token::Operator::Add => Value::Int(l + r),
+                            token::Operator::Sub => Value::Int(l - r),
+                            token::Operator::Mul => Value::Int(l * r),
+                            token::Operator::Div => Value::Int(l / r),
+                            token::Operator::Mod => Value::Int(l % r),
+                            token::Operator::Pow => Value::Int(l.pow(*r as u32)),
+                            token::Operator::BitShiftLeft => Value::Int(l << r),
+                            token::Operator::BitShiftRight => Value::Int(l >> r),
+                            token::Operator::BitAnd => Value::Int(l & r),
+                            token::Operator::BitOr => Value::Int(l | r),
+                            token::Operator::BitXor => Value::Int(l ^ r),
+                            token::Operator::Gt => Value::Bool(l > r),
+                            token::Operator::Lt => Value::Bool(l < r),
+                            token::Operator::Gte => Value::Bool(l >= r),
+                            token::Operator::Lte => Value::Bool(l <= r),
                             _ => return Err(Error::RuntimeError(format!("Invalid operator: {:?}", self.operator))),
                         }
                     }
                     (Value::Float(l), Value::Float(r)) => {
                         match self.operator {
-                            token::Operator::Add => Value::Float(r + l),
-                            token::Operator::Sub => Value::Float(r - l),
-                            token::Operator::Mul => Value::Float(r * l),
-                            token::Operator::Div => Value::Float(r / l),
-                            token::Operator::Mod => Value::Float(r % l),
-                            token::Operator::Pow => Value::Float(r.powf(*l)),
-                            token::Operator::Gt => Value::Bool(r > l),
-                            token::Operator::Lt => Value::Bool(r < l),
-                            token::Operator::Gte => Value::Bool(r >= l),
-                            token::Operator::Lte => Value::Bool(r <= l),
+                            token::Operator::Add => Value::Float(l + r),
+                            token::Operator::Sub => Value::Float(l - r),
+                            token::Operator::Mul => Value::Float(l * r),
+                            token::Operator::Div => Value::Float(l / r),
+                            token::Operator::Mod => Value::Float(l % r),
+                            token::Operator::Pow => Value::Float(l.powf(*r)),
+                            token::Operator::Gt => Value::Bool(l > r),
+                            token::Operator::Lt => Value::Bool(l < r),
+                            token::Operator::Gte => Value::Bool(l >= r),
+                            token::Operator::Lte => Value::Bool(l <= r),
                             _ => return Err(Error::RuntimeError(format!("Invalid operator: {:?}", self.operator))),
                         }
                     }
                     (Value::String(l), Value::String(r)) => {
                         match self.operator {
-                            token::Operator::Add => Value::String(r.clone() + &l.clone()),
+                            token::Operator::Add => Value::String(l.clone() + &r.clone()),
                             _ => return Err(Error::RuntimeError(format!("Invalid operator: {:?}", self.operator))),
                         }
                     }

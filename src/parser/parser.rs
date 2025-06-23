@@ -7,19 +7,21 @@ pub struct Parser {
 
 #[derive(Debug)]
 pub enum ParseError {
+    Unimplimented,
     EmptyTokens,
     InvalidExpression,
     InvalidOperator,
     InvalidToken,
     NoMatchingBracket,
-    ConditionalHasNoBlock,
-    InvalidConditional,
+    NoConditionalFound,
+    NoMatchingBraceForKeyword(token::Token),
+    NoConditionForConditional,
     Error(String),
 }
 
 impl Parser {
     pub fn new(tokens: Vec<token::Token>) -> Self {
-        Self { tokens: tokens.into_iter().rev().collect() }
+        Self { tokens: tokens.into_iter().filter(|t| !matches!(t, token::Token::Comment(_))).collect() }
     }
 
     pub fn parse(&mut self) -> Result<Box<dyn ast::ASTNode>, ParseError> {
@@ -34,6 +36,7 @@ impl Parser {
         }
         while !tokens.is_empty() {
             let (node, new_pos) = self.parse_expr(&tokens);
+            
             match node {
                 Ok(node) => result.push(node),
                 Err(e) => return Err(e),
@@ -42,4 +45,5 @@ impl Parser {
         }
         Ok(Box::new(result))
     }
-} 
+
+}

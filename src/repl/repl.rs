@@ -90,6 +90,7 @@ pub fn repl() {
                 let mut lexer = Lexer::new(buffer);
                 match lexer.tokenize() {
                     Ok(_) => {
+                        lexer.clean_tokens();
                         let mut parser = Parser::new(lexer.tokens.clone());
                         match parser.parse() {
                             Ok(ast) => {

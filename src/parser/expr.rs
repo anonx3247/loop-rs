@@ -4,12 +4,12 @@ use super::parser::{Parser, ParseError};
 
 impl Parser {
     pub fn parse_expr(&mut self, tokens: &[token::Token]) -> (Result<Box<dyn ast::ASTNode>, ParseError>, usize) {
-        if !tokens.is_empty() && tokens[0] == token::Token::Bracket(token::Bracket::CloseParen)
-        && match self.find_matching_bracket(&tokens, 0) {
-            Ok(pos) => pos == tokens.len() - 1,
-            _ => false,
-        } {
-            return (self.parse_expr(&tokens[1..tokens.len()-1]).0, tokens.len());
+        if !tokens.is_empty() && tokens[0] == token::Token::Bracket(token::Bracket::OpenParen) {
+            if let Ok(pos) = self.find_matching_bracket(&tokens, 0) {
+                if pos == tokens.len() - 1 {
+                    return (self.parse_expr(&tokens[1..tokens.len()-1]).0, tokens.len());
+                }
+            }
         }
 
         if tokens.len() == 1 {
@@ -32,6 +32,18 @@ impl Parser {
                 }
             }
         }
+
+        let mut tokens = tokens;
+        let mut offset = 0;
+        while matches!(tokens[0], token::Token::Whitespace(_)) {
+            offset += 1;
+            tokens = &tokens[1..];
+        }
+        
+
+
+        let max_expr_length= self.find_expr_possible_boundary(&tokens, true);
+        let tokens = &tokens[..max_expr_length];
 
         let assign_tokens = [
             token::Token::Operator(token::Operator::Assign),
@@ -57,11 +69,17 @@ impl Parser {
             token::Token::Conditional(token::Conditional::Elif),
         ];
 
+        
+
         for op in assign_tokens.iter() {
             if let Ok(Some(_)) = self.find_first_token_skip_brackets(&op, &tokens) {
-                return self.parse_assignment_expr(&tokens);
+                let (n, i) = self.parse_assignment_expr(&tokens);
+                return (n, i + offset);
             }
         }
+
+        let max_expr_length= self.find_expr_possible_boundary(&tokens, false);
+        let tokens = &tokens[..max_expr_length];
 
         for op in conditional_tokens.iter() {
             if let Ok(Some(_)) = self.find_first_token_skip_brackets(&op, &tokens) {
@@ -70,13 +88,14 @@ impl Parser {
                     Ok(node) =>  node.clone(),
                     Err(e) => return (Err(e), pos),
                 };
-                return (Ok(node), pos);
+                return (Ok(node), pos + offset);
             }
         }
 
         for op in bool_tokens.iter() {
             if let Ok(Some(_)) = self.find_first_token_skip_brackets(&op, &tokens) {
-                return self.parse_bool_expr(&tokens);
+                let (n, i) = self.parse_bool_expr(&tokens);
+                return (n, i + offset);
             }
         }
         self.parse_math_expr(tokens)

@@ -10,11 +10,12 @@ pub fn run_file(path: &Path) {
     let mut lexer = Lexer::new(content);
     match lexer.tokenize() {
         Ok(_) => {
+            lexer.clean_tokens();
             let mut parser = Parser::new(lexer.tokens.clone());
             match parser.parse() {
                 Ok(ast) => {
                     let mut env = Environment::new();
-                    for child in ast.children().iter().rev() {
+                    for child in ast.children() {
                         match child.eval(&mut env) {
                             Ok(value) => println!("{}", value.to_string()),
                             Err(e) => eprintln!("Error: {}", e),

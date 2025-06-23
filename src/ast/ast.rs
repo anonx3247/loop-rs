@@ -65,14 +65,11 @@ impl ASTNode for RootASTNode {
     }
 
     fn eval(&self, env: &mut Environment) -> Result<Value, Error> {
-        if self.children.len() == 1 {
-            self.children[0].eval(env)
+        if self.children.len() == 0 {
+            Ok(Value::None)
         } else {
-            let mut result = Ok(Value::Int(0));
-            for child in &self.children {
-                result = child.eval(env);
-            }
-            result
+            let last_child = self.children.last().unwrap();
+            last_child.eval(env)
         }
     }
 

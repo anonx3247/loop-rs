@@ -12,10 +12,11 @@ mod test_parser {
         println!("{}", ast.to_string());
         let ast = ast.children()[0].clone();
         assert_eq!(ast.element(), "Add");
-        assert_eq!(ast.children()[0].element(), "Mul");
-        assert_eq!(ast.children()[0].children()[0].element(), "Int(3)");
-        assert_eq!(ast.children()[0].children()[1].element(), "Int(2)");
-        assert_eq!(ast.children()[1].element(), "Int(1)");
+        assert_eq!(ast.children()[0].element(), "Int(1)");
+        assert_eq!(ast.children()[1].element(), "Mul");
+        assert_eq!(ast.children()[1].children()[0].element(), "Int(2)");
+        assert_eq!(ast.children()[1].children()[1].element(), "Int(3)");
+        
     }
 
     #[test]
@@ -27,8 +28,8 @@ mod test_parser {
         println!("{}", ast.to_string());
         let ast = ast.children()[0].clone();
         assert_eq!(ast.element(), "And");
-        assert_eq!(ast.children()[0].element(), "Bool(false)");
-        assert_eq!(ast.children()[1].element(), "Bool(true)");
+        assert_eq!(ast.children()[0].element(), "Bool(true)");
+        assert_eq!(ast.children()[1].element(), "Bool(false)");
     }
 
     #[test]
@@ -43,13 +44,12 @@ mod test_parser {
         println!("{}", ast.to_string());
         let ast = ast.children()[0].clone();
         assert_eq!(ast.element(), "Or");
-        assert_eq!(ast.children()[0].element(), "Lte");
-        assert_eq!(ast.children()[0].children()[0].element(), "Int(20)");
+        assert_eq!(ast.children()[0].element(), "Gt");
+        assert_eq!(ast.children()[0].children()[0].element(), "Float(32.5)");
         assert_eq!(ast.children()[0].children()[1].element(), "Int(10)");
-        assert_eq!(ast.children()[1].element(), "Gt");
+        assert_eq!(ast.children()[1].element(), "Lte");
         assert_eq!(ast.children()[1].children()[0].element(), "Int(10)");
-        assert_eq!(ast.children()[1].children()[1].element(), "Float(32.5)");
-
+        assert_eq!(ast.children()[1].children()[1].element(), "Int(20)");
     }
 
 
@@ -62,11 +62,10 @@ mod test_parser {
         println!("{}", ast.to_string());
         let ast = ast.children()[0].clone();
         assert_eq!(ast.element(), "Mul");
-        assert_eq!(ast.children()[0].element(), "Int(3)");
-        assert_eq!(ast.children()[1].element(), "Add");
-        assert_eq!(ast.children()[1].children()[0].element(), "Int(2)");
-        assert_eq!(ast.children()[1].children()[1].element(), "Int(1)");
-        
+        assert_eq!(ast.children()[0].element(), "Add");
+        assert_eq!(ast.children()[0].children()[0].element(), "Int(1)");
+        assert_eq!(ast.children()[0].children()[1].element(), "Int(2)");
+        assert_eq!(ast.children()[1].element(), "Int(3)");
     }
 
     

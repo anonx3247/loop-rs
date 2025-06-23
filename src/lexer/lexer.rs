@@ -29,6 +29,48 @@ impl Lexer {
         Ok(())
     }
 
+    pub fn clean_tokens(&mut self) {
+        let mut cursor = 0;
+        while cursor < self.tokens.len() {
+            match self.tokens[cursor] {
+                Token::Whitespace(Whitespace::Space) => {
+                    self.tokens.remove(cursor); // no need for spaces
+                },
+                Token::Whitespace(Whitespace::Newline) => {
+                    if cursor == 0 {
+                        self.tokens.remove(cursor); // remove leading whitespace
+                    } else if cursor > 1 
+                    && self.tokens[cursor-1] == Token::Whitespace(Whitespace::Newline) 
+                    && self.tokens[cursor-2] == Token::Whitespace(Whitespace::Newline) {
+                        self.tokens.remove(cursor); // remove 3+ newlines (allow max 2 newlines)
+                    } else if cursor + 1 < self.tokens.len()
+                    && match self.tokens[cursor + 1] {
+                        Token::Bracket(Bracket::CloseBrace) | Token::Bracket(Bracket::CloseBracket) | Token::Bracket(Bracket::CloseParen) => true,
+                        _ => false
+                    }{
+                        self.tokens.remove(cursor); // remove newline before closing brackets
+                    } else if cursor - 1 > 0
+                    && match self.tokens[cursor - 1] {
+                        Token::Bracket(Bracket::OpenBrace) | Token::Bracket(Bracket::OpenBracket) | Token::Bracket(Bracket::OpenParen) => true,
+                        _ => false
+                    }{
+                        self.tokens.remove(cursor); // remove newline after opening brackets
+                    } else if cursor == self.tokens.len() - 1 {   
+                        self.tokens.remove(cursor); // remove newline before EOF
+                    } else {
+                        cursor += 1; // keep the newline if it's not leading or consecutive
+                    }
+                },
+                Token::Comment(_) => {
+                    self.tokens.remove(cursor);
+                },
+                _ => {
+                    cursor += 1;
+                }
+            }
+        }
+    }
+
     pub fn tokenize_next(&mut self) -> Result<Token, String> {
         let (token, _) = self.tokenize_next_with_index()?;
         if token != Token::Whitespace(Whitespace::Space) {

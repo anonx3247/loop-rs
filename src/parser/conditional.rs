@@ -1,72 +1,84 @@
-use crate::{ast::block::{ElseBlock, Conditional, IfBlock, ElifBlock}, lexer::token};
-use crate::ast::*;
+use crate::{ast::block::{Conditional, ElifBlock, ElseBlock, IfBlock}, lexer::{token}};
 use super::parser::{Parser, ParseError};
 
 
 
 impl Parser {
+
     pub fn parse_conditional_expr(&mut self, tokens: &[token::Token]) -> (Result<Box<dyn Conditional>, ParseError>, usize) {
-        if let token::Token::Bracket(token::Bracket::CloseBrace) = tokens[0] {
-            let match_pos = match self.find_matching_bracket(tokens, 0) {
-                Ok(pos) => pos,
-                _ => return (Err(ParseError::NoMatchingBracket), 0),
-            };
-
-            let content = match self.parse_tokens(&tokens[1..match_pos]) {
-                Ok(node) => node,
-                Err(e) => return (Err(e), match_pos+1),
-            };
-            
-            if let token::Token::Conditional(token::Conditional::Else) = tokens[match_pos+1] {
-                let (prev_conditional, new_pos) = match self.parse_conditional_expr(&tokens[match_pos+2..]) {
-                    (Ok(node), pos) => (node, pos),
-                    (Err(e), pos) => return (Err(e), pos),
+        match &tokens[0] {
+            token::Token::Conditional(c) => {
+                if let token::Conditional::Match = c {
+                    return (Err(ParseError::Unimplimented), 0)
+                }
+                let brace_loc = self.find_opening_brace_for(&tokens, tokens[0].clone());
+                let brace_loc = match brace_loc {
+                    Ok(loc) => loc,
+                    Err(e) => return (Err(e), 0)
                 };
-                let new_pos = new_pos + match_pos + 2;
-                return (Ok(Box::new(ElseBlock::new(content.children(), prev_conditional))), new_pos);
-            } else {
-                let if_pos = match self.find_first_token_skip_brackets(&token::Token::Conditional(token::Conditional::If), tokens) {
-                    Ok(pos) => pos,
-                    Err(e) => return (Err(e), match_pos+1),
-                };
-                let elif_pos = match self.find_first_token_skip_brackets(&token::Token::Conditional(token::Conditional::Elif), tokens) {
-                    Ok(pos) => pos,
-                    Err(e) => return (Err(e), match_pos+1),
-                };
-
-                let cond_pos = if if_pos.is_some() && elif_pos.is_some() {
-                    if if_pos.unwrap() < elif_pos.unwrap() {
-                        if_pos.unwrap()
-                    } else {
-                        elif_pos.unwrap()
-                    }
-                } else if if_pos.is_some() {
-                    if_pos.unwrap()
-                } else if elif_pos.is_some() {
-                    elif_pos.unwrap()
-                } else {
-                    return (Err(ParseError::InvalidConditional), match_pos+1);
-                };
-
-                let (condition, mut new_pos) = match self.parse_expr(&tokens[match_pos+1..cond_pos]) {
-                    (Ok(node), pos) => (node, pos),
-                    (Err(e), pos) => return (Err(e), pos),
-                };
-                new_pos += match_pos;
-                assert_eq!(new_pos+1, cond_pos, "new_pos: {} != cond_pos: {}", new_pos+1, cond_pos);
-                if let token::Token::Conditional(token::Conditional::Elif) = tokens[new_pos+1] {
-                    let prev_conditional = match self.parse_conditional_expr(&tokens[new_pos+2..]).0 {
-                        Ok(node) => node,
-                        Err(e) => return (Err(e), new_pos+2),
+                let condition = if brace_loc != 1 {
+                    let (condition, new_pos) = self.parse_expr(&tokens[1..brace_loc]);
+                    let condition = match condition {
+                        Ok(c) => c,
+                        Err(e) => return (Err(e), new_pos)
                     };
-                    return (Ok(Box::new(ElifBlock::new(condition, content.children(), prev_conditional))), new_pos+2);
+                    assert_eq!(new_pos+1, brace_loc, "missing tokens between if and brace");
+                    Some(condition)
+
+                } else {
+                    None
+                };
+                let matching_loc = match self.find_matching_bracket(&tokens, brace_loc) {
+                    Ok(loc) => loc,
+                    Err(e) => return (Err(e), brace_loc)
+                };
+                let content = match self.parse_tokens(&tokens[brace_loc+1..matching_loc]) {
+                    Ok(c) => c,
+                    Err(e) => return (Err(e), matching_loc)
+                };
+                let mut new_pos = matching_loc + 1;
+                let next: Option<Box<dyn Conditional>>;
+                if new_pos < tokens.len() && c != &token::Conditional::Else {
+                    next = match tokens[new_pos] {
+                        token::Token::Conditional(token::Conditional::Elif)
+                        |token::Token::Conditional(token::Conditional::Else) => {
+                            let (next, next_loc) = match self.parse_conditional_expr(&tokens[new_pos..]) {
+                                (Ok(n), l) => (n, l),
+                                (Err(e), l) => return (Err(e), l)
+                            };
+                            new_pos += next_loc;
+                            Some(next)
+                        },
+                    _ => None
+                    }
+                } else {
+                    next = None;
                 }
-                if let token::Token::Conditional(token::Conditional::If) = tokens[new_pos+1] {
-                    return (Ok(Box::new(IfBlock::new(condition, content.children()))), new_pos+2);
+
+                match c {
+                    token::Conditional::If => {
+                        let condition = match condition {
+                            Some(c) => c,
+                            _ => return (Err(ParseError::NoConditionForConditional), 0)
+                        };
+                        (Ok(Box::new(IfBlock::new(condition, content.children(), next))), new_pos)
+                    },
+                    token::Conditional::Elif => {
+                        let condition = match condition {
+                            Some(c) => c,
+                            _ => return (Err(ParseError::NoConditionForConditional), 0)
+                        };
+                        (Ok(Box::new(ElifBlock::new(condition, content.children(), next))), new_pos)
+                    },
+                    token::Conditional::Else => {
+                        (Ok(Box::new(ElseBlock::new(content.children()))), new_pos)
+                    },
+                    token::Conditional::Match => 
+                        (Err(ParseError::Unimplimented), new_pos)
                 }
-                return (Err(ParseError::InvalidConditional), new_pos+1);
-            }
+            },
+            _ => (Err(ParseError::NoConditionalFound), 0)
+
         }
-        (Err(ParseError::ConditionalHasNoBlock), 0)
     }
 }

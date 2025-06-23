@@ -8,7 +8,7 @@ impl Parser {
         left_parser: Option<fn(&mut Self, &[token::Token]) -> (Result<Box<dyn ast::ASTNode>, ParseError>, usize)>, 
         right_parser: Option<fn(&mut Self, &[token::Token]) -> (Result<Box<dyn ast::ASTNode>, ParseError>, usize)>
         ) -> (Result<Box<dyn ast::ASTNode>, ParseError>, usize) {
-        let tokens = tokens.to_vec();
+        
         for op in operators.iter() {
             if let Ok(Some(pos)) = self.find_first_token_skip_brackets(&op, &tokens) {
                 let (left, left_pos) = match left_parser {
@@ -36,7 +36,26 @@ impl Parser {
                 return (Ok(Box::new(node)), right_pos + pos + 1);
             }
         }
-        (Err(ParseError::InvalidExpression), 0)
+
+        match tokens[0] {
+            token::Token::Identifier(_) => {
+                let identifier = identifier::Identifier::from_token(tokens[0].clone())
+                    .map_err(|e| ParseError::Error(e.to_string()));
+                return (match identifier {
+                    Ok(identifier) => Ok(Box::new(identifier)),
+                    Err(e) => Err(e),
+                }, 1);
+            }
+            _ => {
+                let literal = literal::Literal::from_token(tokens[0].clone())
+                    .map_err(|e| ParseError::Error(e.to_string()));
+                return (match literal {
+                    Ok(literal) => Ok(Box::new(literal)),
+                    Err(e) => Err(e),
+                }, 1);
+            }
+        }
+        
     }
 
     pub fn parse_math_expr(&mut self, tokens: &[token::Token]) -> (Result<Box<dyn ast::ASTNode>, ParseError>, usize) {

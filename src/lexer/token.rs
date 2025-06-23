@@ -15,7 +15,6 @@ pub enum Token {
     Comment(Comment),
     Whitespace(Whitespace),
     Error(Error),
-    EOF,
     Debug,
 }
 
@@ -118,7 +117,6 @@ pub enum Conditional {
     Else,
     Elif,
     Match,
-    MatchArm,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
@@ -142,7 +140,6 @@ pub enum VariableDeclaration {
 pub enum TypeDeclaration {
     Component,
     Type,
-    Required,
     Abstract,
     Implement,
 }
@@ -150,13 +147,10 @@ pub enum TypeDeclaration {
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum Function {
     Async,
+    Await,
     Arrow,
     Return,
     Fn,
-    Get,
-    Set,
-    Getter,
-    Setter,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
@@ -173,6 +167,7 @@ pub enum Punctuation {
     Comma,
     Colon,
     Arrow,
+    DoubleArrow,
     Question,
     Exclamation,
 }
@@ -213,7 +208,6 @@ pub fn get_keywords_map() -> HashMap<&'static str, Token> {
     keywords.insert("module", Token::Module(Module::Module));
     keywords.insert("import", Token::Module(Module::Import));
     keywords.insert("from", Token::Module(Module::From));
-    keywords.insert("required", Token::TypeDeclaration(TypeDeclaration::Required));
     keywords.insert("abs", Token::TypeDeclaration(TypeDeclaration::Abstract));
     keywords.insert("impl", Token::TypeDeclaration(TypeDeclaration::Implement));
     keywords.insert("fn", Token::Function(Function::Fn));
@@ -263,7 +257,7 @@ pub fn get_symbols_map() -> HashMap<&'static str, Token> {
     symbols.insert("|", Token::Operator(Operator::BitOr));
     symbols.insert("<<", Token::Operator(Operator::BitShiftLeft));
     symbols.insert(">>", Token::Operator(Operator::BitShiftRight));
-    symbols.insert("=>", Token::Conditional(Conditional::MatchArm));
+    symbols.insert("=>", Token::Punctuation(Punctuation::DoubleArrow));
     symbols.insert("->", Token::Function(Function::Arrow));
     symbols.insert("..", Token::Loop(Loop::Range));
     symbols.insert(":", Token::Punctuation(Punctuation::Colon));
@@ -379,7 +373,6 @@ impl Token {
                 Error::Error => String::from("Error"),
                 Error::Except => String::from("Except"),
             },
-            Token::EOF => String::from("EOF"),
             Token::Type(_type) => match _type {
                 Type::Generic(c) => c.to_string(),
                 Type::UserDefined(s) => s.clone(),
