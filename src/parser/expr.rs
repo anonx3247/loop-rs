@@ -42,8 +42,16 @@ impl Parser {
         
 
 
-        let max_expr_length= self.find_expr_possible_boundary(&tokens, true);
+        let max_expr_length= self.find_expr_possible_boundary(&tokens, true, true);
         let tokens = &tokens[..max_expr_length];
+
+        let loop_tokens = [
+            token::Token::Loop(token::Loop::While),
+            token::Token::Loop(token::Loop::For),
+            token::Token::Loop(token::Loop::Loop),
+            token::Token::Loop(token::Loop::Break),
+            token::Token::Loop(token::Loop::Continue)
+        ];
 
         let assign_tokens = [
             token::Token::Operator(token::Operator::Assign),
@@ -69,6 +77,15 @@ impl Parser {
             token::Token::Conditional(token::Conditional::Elif),
         ];
 
+        for op in loop_tokens.iter() {
+            if let Ok(Some(_)) = self.find_first_token_skip_brackets(&op, &tokens) {
+                let (node, pos) = self.parse_loop_expr(&tokens);
+                return (node, pos + offset);
+            }
+        }
+
+        let max_expr_length= self.find_expr_possible_boundary(&tokens, true, false);
+        let tokens = &tokens[..max_expr_length];
         
 
         for op in assign_tokens.iter() {
@@ -78,8 +95,9 @@ impl Parser {
             }
         }
 
-        let max_expr_length= self.find_expr_possible_boundary(&tokens, false);
+        let max_expr_length= self.find_expr_possible_boundary(&tokens, false, false);
         let tokens = &tokens[..max_expr_length];
+
 
         for op in conditional_tokens.iter() {
             if let Ok(Some(_)) = self.find_first_token_skip_brackets(&op, &tokens) {

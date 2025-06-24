@@ -16,6 +16,9 @@ pub enum ParseError {
     NoConditionalFound,
     NoMatchingBraceForKeyword(token::Token),
     NoConditionForConditional,
+    NoLoopFound,
+    UnexpectedContentBeforeBlock,
+    UnexpectedBeginningOfBlock,
     Error(String),
 }
 

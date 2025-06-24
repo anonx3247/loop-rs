@@ -5,6 +5,7 @@ pub mod literal;
 pub mod assignment;
 pub mod identifier;
 pub mod block;
+pub mod loops;
 
 pub use ast::*;
 pub use value::*;

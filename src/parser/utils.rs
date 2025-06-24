@@ -44,15 +44,15 @@ impl Parser {
         Err(ParseError::NoMatchingBracket)
     }
 
-    pub fn find_opening_brace_for(&mut self, tokens: &[token::Token], cond: token::Token) -> Result<usize, ParseError> {
+    pub fn find_opening_brace_for(&mut self, tokens: &[token::Token], keyword: token::Token) -> Result<usize, ParseError> {
         if tokens.len() <= 1 {
-            return Err(ParseError::NoMatchingBraceForKeyword(cond));
+            return Err(ParseError::NoMatchingBraceForKeyword(keyword));
         }
-        match cond {
+        match keyword {
             token::Token::Conditional(token::Conditional::Else)
             | token::Token::Loop(token::Loop::Loop) => {
                 if tokens[1] != token::Token::Bracket(token::Bracket::OpenBrace) {
-                    return Err(ParseError::NoMatchingBraceForKeyword(cond));
+                    return Err(ParseError::NoMatchingBraceForKeyword(keyword));
                 } else {
                     return Ok(1)
                 }
@@ -82,7 +82,7 @@ impl Parser {
                 }
             }
         }
-        Err(ParseError::NoMatchingBraceForKeyword(cond))
+        Err(ParseError::NoMatchingBraceForKeyword(keyword))
     }
 
     pub fn find_next_non_whitespace_token(&mut self, tokens: &[token::Token]) -> Option<token::Token> {
@@ -94,12 +94,16 @@ impl Parser {
         None
     }
 
-    pub fn find_expr_possible_boundary(&mut self, tokens: &[token::Token], assign_mode: bool) -> usize {
+    pub fn find_expr_possible_boundary(&mut self, tokens: &[token::Token], assign_mode: bool, loop_mode: bool) -> usize {
         let mut cursor = 0;
         while cursor < tokens.len() {
             match tokens[cursor] {
-                token::Token::Loop(_)
-                | token::Token::TypeDeclaration(_)
+                token::Token::Loop(_) => if !loop_mode {
+                    return cursor;
+                } else {
+                    cursor += 1;
+                },
+                token::Token::TypeDeclaration(_)
                 | token::Token::Function(_)
                 | token::Token::Module(_)
                 | token::Token::Debug
@@ -125,10 +129,14 @@ impl Parser {
                 token::Token::Literal(_) | token::Token::Identifier(_) => {
                     match self.find_next_non_whitespace_token(&tokens[cursor+1..]) {
                         Some(tok) => match tok {
-                            token::Token::Literal(_) | token::Token::Identifier(_) => {
-                                return cursor+1;
+                            token::Token::Operator(_) 
+                            | token::Token::Punctuation(_)
+                            | token::Token::Bracket(_) => {
+                                cursor += 1;
                             },
-                            _ => {cursor += 1;}
+                            _ => {
+                                return cursor+1;
+                            }
                         },
                         _ => {
                             cursor += 1;

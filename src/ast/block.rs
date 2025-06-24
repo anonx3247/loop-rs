@@ -24,7 +24,11 @@ pub trait Conditional: ASTNode {
         while let Some(conditional) = current_conditional {
             match conditional.condition(env) {
                 Ok(Value::Bool(true)) => {
-                    return Ok(Some(conditional.content().last().unwrap().eval(env)?));
+                    let mut result = Value::None;
+                    for child in conditional.content() {
+                        result = child.eval(env)?;
+                    }
+                    return Ok(Some(result));
                 }
                 Err(e) => {
                     return Err(e);

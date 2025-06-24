@@ -90,4 +90,14 @@ mod test_parser {
         let ast = parser.parse().unwrap();
         println!("{}", ast.to_string());
     }
+
+    #[test]
+    fn test_parse_if_else() {
+        let mut lexer = Lexer::new("if a > 10 { a } else { b }".to_string());
+        lexer.tokenize().unwrap();
+        let mut parser = Parser::new(lexer.tokens.clone());
+        let ast = parser.parse().unwrap();
+        println!("{}", ast.to_string());
+    }
+    
 }

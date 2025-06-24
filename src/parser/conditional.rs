@@ -11,31 +11,14 @@ impl Parser {
                 if let token::Conditional::Match = c {
                     return (Err(ParseError::Unimplimented), 0)
                 }
-                let brace_loc = self.find_opening_brace_for(&tokens, tokens[0].clone());
-                let brace_loc = match brace_loc {
-                    Ok(loc) => loc,
-                    Err(e) => return (Err(e), 0)
+                let ((content, condition), matching_loc) = match self.parse_block_expr(tokens, match c {
+                    token::Conditional::Else => None,
+                    _ => Some(|s, tok| s.parse_expr(tok))
+                }) {
+                    (Ok(c), l) => (c, l),
+                    (Err(e), l) => return (Err(e), l)
                 };
-                let condition = if brace_loc != 1 {
-                    let (condition, new_pos) = self.parse_expr(&tokens[1..brace_loc]);
-                    let condition = match condition {
-                        Ok(c) => c,
-                        Err(e) => return (Err(e), new_pos)
-                    };
-                    assert_eq!(new_pos+1, brace_loc, "missing tokens between if and brace");
-                    Some(condition)
 
-                } else {
-                    None
-                };
-                let matching_loc = match self.find_matching_bracket(&tokens, brace_loc) {
-                    Ok(loc) => loc,
-                    Err(e) => return (Err(e), brace_loc)
-                };
-                let content = match self.parse_tokens(&tokens[brace_loc+1..matching_loc]) {
-                    Ok(c) => c,
-                    Err(e) => return (Err(e), matching_loc)
-                };
                 let mut new_pos = matching_loc + 1;
                 let next: Option<Box<dyn Conditional>>;
                 if new_pos < tokens.len() && c != &token::Conditional::Else {
@@ -77,7 +60,10 @@ impl Parser {
                         (Err(ParseError::Unimplimented), new_pos)
                 }
             },
-            _ => (Err(ParseError::NoConditionalFound), 0)
+            _ => {
+                println!("no conditional found: {:?}", tokens[0]);
+                (Err(ParseError::NoConditionalFound), 0)
+            }
 
         }
     }

@@ -37,7 +37,20 @@ pub trait ASTNode {
     fn to_string(&self) -> String {
         self.print_tree(0)
     }
-    fn eval(&self, env: &mut Environment) -> Result<Value, Error>;
+
+    fn eval(&self, env: &mut Environment) -> Result<Value, Error> {
+        let children = self.children();
+        if children.len() == 0 {
+            Ok(Value::None)
+        } else {
+            let mut result = Value::None;
+            for child in children {
+                result = child.eval(env)?;
+            }
+            Ok(result)
+        }
+    }
+
     fn clone(&self) -> Box<dyn ASTNode>;
 }
 
@@ -62,15 +75,6 @@ impl ASTNode for RootASTNode {
 
     fn element(&self) -> String {
         "Root".to_string()
-    }
-
-    fn eval(&self, env: &mut Environment) -> Result<Value, Error> {
-        if self.children.len() == 0 {
-            Ok(Value::None)
-        } else {
-            let last_child = self.children.last().unwrap();
-            last_child.eval(env)
-        }
     }
 
     fn clone(&self) -> Box<dyn ASTNode> {
