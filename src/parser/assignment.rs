@@ -3,6 +3,23 @@ use crate::ast::*;
 use super::parser::{Parser, ParseError};
 
 impl Parser {
+
+    pub fn parse_assignment_or_declaration_expr(&mut self, tokens: &[token::Token]) -> (Result<Box<dyn ast::ASTNode>, ParseError>, usize) {
+       if matches!(tokens[0], token::Token::VariableDeclaration(token::VariableDeclaration::Mut)) ||
+        matches!(tokens[0], token::Token::VariableDeclaration(token::VariableDeclaration::Let)) {
+            if (tokens.len() > 2 && !matches!(tokens[2], token::Token::Operator(token::Operator::Assign))) || tokens.len() <= 2 {
+                if (tokens.len() > 4 && !matches!(tokens[4], token::Token::Operator(token::Operator::EqualSign))) || tokens.len() <= 4 {
+                    let (node, pos) = self.parse_variable_declaration_expr(&tokens[..4]);
+                    match node {
+                        Ok(node) => return (Ok(Box::new(node)), 4),
+                        Err(e) => return (Err(e), pos+1),
+                    }
+                }
+            }
+        } 
+        return self.parse_assignment_expr(tokens);
+    }
+
     pub fn parse_assignment_expr(&mut self, tokens: &[token::Token]) -> (Result<Box<dyn ast::ASTNode>, ParseError>, usize) {
 
         let operators = [
@@ -27,6 +44,7 @@ impl Parser {
                     if let Some(token::Token::Identifier(identifier)) = tokens.get(pos - 1) {
                         if pos < 2 {
                             let node = assignment::VariableAssignment {
+                                is_also_decl: false,
                                 mutable: false,
                                 type_: None,
                                 name: identifier.clone(),
@@ -35,7 +53,17 @@ impl Parser {
                             return (Ok(Box::new(node)), right_pos+pos+1);
                         } else if let Some(token::Token::VariableDeclaration(token::VariableDeclaration::Mut)) = tokens.get(pos - 2) {
                             let node = assignment::VariableAssignment {
+                                is_also_decl: true,
                                 mutable: true,
+                                type_: None,
+                                name: identifier.clone(),
+                                expr: right.clone(),
+                            };
+                            return (Ok(Box::new(node)), right_pos+pos+1);
+                        } else if let Some(token::Token::VariableDeclaration(token::VariableDeclaration::Let)) = tokens.get(pos - 2) {
+                            let node = assignment::VariableAssignment {
+                                is_also_decl: true,
+                                mutable: false,
                                 type_: None,
                                 name: identifier.clone(),
                                 expr: right.clone(),
@@ -43,6 +71,7 @@ impl Parser {
                             return (Ok(Box::new(node)), right_pos+pos+1);
                         } else {
                             let node = assignment::VariableAssignment {
+                                is_also_decl: false,
                                 mutable: false,
                                 type_: None,
                                 name: identifier.clone(),
@@ -52,41 +81,13 @@ impl Parser {
                         }
                     }
                 } else {
-                    // [mut] identifier: type = expr
-                    if pos < 3 {
+                    let (node, _) = self.parse_variable_declaration_expr(&tokens[..pos]);
+                    if let Ok(node) = node {
+                        let node = assignment::VariableAssignment::from_variable_declaration(node, right);
+                        return (Ok(Box::new(node)), right_pos+pos+1);
+                    } else {
                         return (Err(ParseError::InvalidToken), right_pos+pos+1);
-                    } else if let Some(token::Token::Type(type_)) = tokens.get(pos - 1) {
-                        if let Some(token::Token::Punctuation(token::Punctuation::Colon)) = tokens.get(pos - 2) {
-                            if let Some(token::Token::Identifier(identifier)) = tokens.get(pos - 3) {
-                                if pos < 4 {
-                                    let node = assignment::VariableAssignment {
-                                        mutable: false,
-                                        type_: Some(type_.clone()),
-                                        name: identifier.clone(),
-                                        expr: right.clone(),
-                                    };
-                                    return (Ok(Box::new(node)), right_pos+pos+1);
-                                } else if let Some(token::Token::VariableDeclaration(token::VariableDeclaration::Mut)) = tokens.get(pos - 4) {
-                                    let node = assignment::VariableAssignment {
-                                        mutable: true,
-                                        type_: Some(type_.clone()),
-                                        name: identifier.clone(),
-                                        expr: right.clone(),
-                                    };
-                                    return (Ok(Box::new(node)), right_pos+pos+1);
-                                } else {
-                                    let node = assignment::VariableAssignment {
-                                        mutable: false,
-                                        type_: Some(type_.clone()),
-                                        name: identifier.clone(),
-                                        expr: right.clone(),
-                                    };
-                                    return (Ok(Box::new(node)), right_pos+pos+1);
-                                }
-                            }
-                        }
                     }
-                    return (Err(ParseError::InvalidToken), right_pos+pos+1);
                 }
             }
         }

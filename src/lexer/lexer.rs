@@ -90,7 +90,7 @@ impl Lexer {
             let number_re = Regex::new(r"^-?[0-9]+([.][0-9]+)?([eE][+-]?[0-9]+)?").unwrap();
             let comment_re = Regex::new(r"^--").unwrap();
             let identifier_re = Regex::new(r"^[_a-z][a-zA-Z0-9_]*").unwrap();
-            let custom_type_re = Regex::new(r"^[A-Z][a-zA-Z0-9_]*").unwrap();
+            let custom_type_re = Regex::new(r"^[A-Z][a-zA-Z0-9_]*\??").unwrap();
 
             if whitespace_re.is_match(&self.source) {
                 Self::tokenize_whitespace(&self.source)

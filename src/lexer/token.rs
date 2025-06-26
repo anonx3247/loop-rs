@@ -103,10 +103,17 @@ pub enum Type {
     F64,
     Bool,
     String,
-    Char,
-    Int,
-    UInt,
-    Float,
+    U8Option,
+    U16Option,
+    U32Option,
+    U64Option,
+    I16Option,
+    I32Option,
+    I64Option,
+    F32Option,
+    F64Option,
+    BoolOption,
+    StringOption,
     Generic(char),
     UserDefined(String),
 }
@@ -294,10 +301,17 @@ pub fn get_base_types_map() -> HashMap<&'static str, Token> {
     base_types.insert("f64", Token::Type(Type::F64));
     base_types.insert("bool", Token::Type(Type::Bool));
     base_types.insert("string", Token::Type(Type::String));
-    base_types.insert("char", Token::Type(Type::Char));
-    base_types.insert("int", Token::Type(Type::Int));
-    base_types.insert("uint", Token::Type(Type::UInt));
-    base_types.insert("float", Token::Type(Type::Float));
+    base_types.insert("u8?", Token::Type(Type::U8Option));
+    base_types.insert("u16?", Token::Type(Type::U16Option));
+    base_types.insert("u32?", Token::Type(Type::U32Option));
+    base_types.insert("u64?", Token::Type(Type::U64Option));
+    base_types.insert("i16?", Token::Type(Type::I16Option));
+    base_types.insert("i32?", Token::Type(Type::I32Option));
+    base_types.insert("i64?", Token::Type(Type::I64Option));
+    base_types.insert("f32?", Token::Type(Type::F32Option));
+    base_types.insert("f64?", Token::Type(Type::F64Option));
+    base_types.insert("bool?", Token::Type(Type::BoolOption));
+    base_types.insert("string?", Token::Type(Type::StringOption));
     base_types
 }
 
@@ -387,10 +401,17 @@ impl Token {
                 Type::F64 => String::from("f64"),
                 Type::Bool => String::from("bool"),
                 Type::String => String::from("string"),
-                Type::Char => String::from("char"),
-                Type::Int => String::from("int"),
-                Type::UInt => String::from("uint"),
-                Type::Float => String::from("float"),
+                Type::U8Option => String::from("u8?"),
+                Type::U16Option => String::from("u16?"),
+                Type::U32Option => String::from("u32?"),
+                Type::U64Option => String::from("u64?"),
+                Type::I16Option => String::from("i16?"),
+                Type::I32Option => String::from("i32?"),
+                Type::I64Option => String::from("i64?"),
+                Type::F32Option => String::from("f32?"),
+                Type::F64Option => String::from("f64?"),
+                Type::BoolOption => String::from("bool?"),
+                Type::StringOption => String::from("string?"),
             },
             Token::Module(_module) => match _module {
                 Module::Module => String::from("Module"),

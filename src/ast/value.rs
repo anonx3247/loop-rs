@@ -5,6 +5,7 @@ pub enum Value {
     String(String),
     Bool(bool),
     None,
+    Error(String),
 }
 
 impl std::fmt::Display for Value {
@@ -15,6 +16,7 @@ impl std::fmt::Display for Value {
             Value::String(s) => write!(f, "{}", s),
             Value::Bool(b) => write!(f, "{}", b),
             Value::None => write!(f, "none"),
+            Value::Error(e) => write!(f, "error({})", e),
         }
     }
 }

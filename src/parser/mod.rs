@@ -8,3 +8,4 @@ mod expr;
 mod utils;
 mod loops;
 mod block;
+mod variable_declaration;

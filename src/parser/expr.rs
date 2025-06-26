@@ -53,10 +53,12 @@ impl Parser {
             token::Token::Loop(token::Loop::Continue)
         ];
 
-        let assign_tokens = [
+        let decl_tokens = [
             token::Token::Operator(token::Operator::Assign),
             token::Token::Operator(token::Operator::EqualSign),
-            token::Token::VariableDeclaration(token::VariableDeclaration::Mut)
+            token::Token::VariableDeclaration(token::VariableDeclaration::Mut),
+            token::Token::VariableDeclaration(token::VariableDeclaration::Let),
+            token::Token::Punctuation(token::Punctuation::Colon),
         ];
 
         let bool_tokens = [
@@ -88,9 +90,9 @@ impl Parser {
         let tokens = &tokens[..max_expr_length];
         
 
-        for op in assign_tokens.iter() {
+        for op in decl_tokens.iter() {
             if let Ok(Some(_)) = self.find_first_token_skip_brackets(&op, &tokens) {
-                let (n, i) = self.parse_assignment_expr(&tokens);
+                let (n, i) = self.parse_assignment_or_declaration_expr(&tokens);
                 return (n, i + offset);
             }
         }
