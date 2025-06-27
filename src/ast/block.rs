@@ -51,13 +51,13 @@ impl Conditional for IfBlock {
     }
 
     fn clone_conditional(&self) -> Box<dyn Conditional> {
-        let content = self.content.iter().map(|c| c.as_ref().clone()).collect();
-        Box::new(IfBlock::new(self.condition.clone(), content, self.next_conditional.as_ref().map(|c| c.clone_conditional())))
+        let content = self.content.iter().map(|c| c.as_ref().clone_to_node()).collect();
+        Box::new(IfBlock::new(self.condition.clone_to_node(), content, self.next_conditional.as_ref().map(|c| c.clone_conditional())))
     }
 
     fn content(&self) -> Vec<Box<dyn ASTNode>> {
         self.content.iter()
-            .map(|c| c.as_ref().clone())
+            .map(|c| c.as_ref().clone_to_node())
             .collect::<Vec<Box<dyn ASTNode>>>()
     }
 }
@@ -69,7 +69,7 @@ impl ASTNode for IfBlock {
 
     fn children(&self) -> Vec<Box<dyn ASTNode>> {
         self.content.iter()
-            .map(|c| c.as_ref().clone())
+            .map(|c| c.as_ref().clone_to_node())
             .collect::<Vec<Box<dyn ASTNode>>>()
     }
 
@@ -80,9 +80,9 @@ impl ASTNode for IfBlock {
             Err(e) => Err(e),
         }
     }
-    fn clone(&self) -> Box<dyn ASTNode> {
-        let content = self.content.iter().map(|c| c.as_ref().clone()).collect();
-        Box::new(IfBlock::new(self.condition.clone(), content, self.next_conditional.as_ref().map(|c| c.clone_conditional())))
+    fn clone_to_node(&self) -> Box<dyn ASTNode> {
+        let content = self.content.iter().map(|c| c.as_ref().clone_to_node()).collect();
+        Box::new(IfBlock::new(self.condition.clone_to_node(), content, self.next_conditional.as_ref().map(|c| c.clone_conditional())))
     }
 
     fn print_tree(&self, indent: usize) -> String {
@@ -126,13 +126,13 @@ impl Conditional for ElseBlock {
     }
 
     fn clone_conditional(&self) -> Box<dyn Conditional> {
-        let content = self.content.iter().map(|c| c.as_ref().clone()).collect();
+        let content = self.content.iter().map(|c| c.as_ref().clone_to_node()).collect();
         Box::new(ElseBlock::new(content))
     }
 
     fn content(&self) -> Vec<Box<dyn ASTNode>> {
         self.content.iter()
-            .map(|c| c.as_ref().clone())
+            .map(|c| c.as_ref().clone_to_node())
             .collect::<Vec<Box<dyn ASTNode>>>()
     }
 }
@@ -144,7 +144,7 @@ impl ASTNode for ElseBlock {
 
     fn children(&self) -> Vec<Box<dyn ASTNode>> {
         self.content.iter()
-            .map(|c| c.as_ref().clone())
+            .map(|c| c.as_ref().clone_to_node())
             .collect::<Vec<Box<dyn ASTNode>>>()
     }
 
@@ -158,8 +158,8 @@ impl ASTNode for ElseBlock {
         }
     }
 
-    fn clone(&self) -> Box<dyn ASTNode> {
-        let content = self.content.iter().map(|c| c.as_ref().clone()).collect();
+    fn clone_to_node(&self) -> Box<dyn ASTNode> {
+        let content = self.content.iter().map(|c| c.as_ref().clone_to_node()).collect();
         Box::new(ElseBlock::new(content))
     }
 
@@ -200,13 +200,13 @@ impl Conditional for ElifBlock {
     }
 
     fn clone_conditional(&self) -> Box<dyn Conditional> {
-        let content = self.content.iter().map(|c| c.as_ref().clone()).collect();
-        Box::new(ElifBlock::new(self.condition.clone(), content, self.next_conditional.as_ref().map(|c| c.clone_conditional())))
+        let content = self.content.iter().map(|c| c.as_ref().clone_to_node()).collect();
+        Box::new(ElifBlock::new(self.condition.clone_to_node(), content, self.next_conditional.as_ref().map(|c| c.clone_conditional())))
     }
 
     fn content(&self) -> Vec<Box<dyn ASTNode>> {
         self.content.iter()
-            .map(|c| c.as_ref().clone())
+            .map(|c| c.as_ref().clone_to_node())
             .collect::<Vec<Box<dyn ASTNode>>>()
     }
 }
@@ -218,7 +218,7 @@ impl ASTNode for ElifBlock {
 
     fn children(&self) -> Vec<Box<dyn ASTNode>> {
         self.content.iter()
-            .map(|c| c.as_ref().clone())
+            .map(|c| c.as_ref().clone_to_node())
             .collect::<Vec<Box<dyn ASTNode>>>()
     }
 
@@ -250,9 +250,9 @@ impl ASTNode for ElifBlock {
         result
     }
 
-    fn clone(&self) -> Box<dyn ASTNode> {
-        let content = self.content.iter().map(|c| c.as_ref().clone()).collect();
-        Box::new(ElifBlock::new(self.condition.clone(), content, self.next_conditional.as_ref().map(|c| c.clone_conditional())))
+    fn clone_to_node(&self) -> Box<dyn ASTNode> {
+        let content = self.content.iter().map(|c| c.as_ref().clone_to_node()).collect();
+        Box::new(ElifBlock::new(self.condition.clone_to_node(), content, self.next_conditional.as_ref().map(|c| c.clone_conditional())))
     }
 }
 

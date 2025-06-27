@@ -29,7 +29,7 @@ impl ASTNode for Literal {
         Ok(self.0.clone())
     }
 
-    fn clone(&self) -> Box<dyn ASTNode> {
+    fn clone_to_node(&self) -> Box<dyn ASTNode> {
         Box::new(Literal(self.0.clone()))
     }
 }

@@ -1,7 +1,7 @@
 use crate::ast::{ASTNode,Error};
 use crate::ast::value::Value;
 use crate::environment::environment::Environment;
-use crate::environment::environment::Type;
+use crate::ast::type_node::Type;
 
 pub struct VariableDeclaration {
     pub mutable: bool,
@@ -29,7 +29,7 @@ impl ASTNode for VariableDeclaration {
         vec![]
     }
 
-    fn clone(&self) -> Box<dyn ASTNode> {
+    fn clone_to_node(&self) -> Box<dyn ASTNode> {
         Box::new(VariableDeclaration {
             mutable: self.mutable,
             type_: self.type_.clone(),

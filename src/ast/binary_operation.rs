@@ -11,16 +11,16 @@ pub struct BinaryOperation {
 
 impl ASTNode for BinaryOperation {
     fn children(&self) -> Vec<Box<dyn ASTNode>> {
-        vec![self.left.clone(), self.right.clone()]
+        vec![self.left.clone_to_node(), self.right.clone_to_node()]
     }
 
     fn element(&self) -> String {
         format!("{:?}", self.operator)
     }
 
-    fn clone(&self) -> Box<dyn ASTNode> {
-        let left = self.left.clone();
-        let right = self.right.clone();
+    fn clone_to_node(&self) -> Box<dyn ASTNode> {
+        let left = self.left.clone_to_node();
+        let right = self.right.clone_to_node();
         Box::new(BinaryOperation {
             left,
             right,

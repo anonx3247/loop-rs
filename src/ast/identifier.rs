@@ -16,7 +16,7 @@ impl Identifier {
 
 impl ASTNode for Identifier {
     fn element(&self) -> String {
-        format!("Identifier({})", self.0)
+        self.0.clone()
     }
 
     fn children(&self) -> Vec<Box<dyn ASTNode>> {
@@ -27,7 +27,7 @@ impl ASTNode for Identifier {
         env.lookup(&self.0)
     }
 
-    fn clone(&self) -> Box<dyn ASTNode> {
+    fn clone_to_node(&self) -> Box<dyn ASTNode> {
         Box::new(Identifier(self.0.clone()))
     }
 }

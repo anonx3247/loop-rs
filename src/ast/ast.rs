@@ -16,6 +16,7 @@ impl std::fmt::Display for Error {
     }
 }
 
+
 pub trait ASTNode {
     fn children(&self) -> Vec<Box<dyn ASTNode>>;
     fn element(&self) -> String;
@@ -51,7 +52,8 @@ pub trait ASTNode {
         }
     }
 
-    fn clone(&self) -> Box<dyn ASTNode>;
+    fn clone_to_node(&self) -> Box<dyn ASTNode>;
+
 }
 
 pub struct RootASTNode {
@@ -70,15 +72,48 @@ impl RootASTNode {
 
 impl ASTNode for RootASTNode {
     fn children(&self) -> Vec<Box<dyn ASTNode>> {
-        self.children.iter().map(|c| c.as_ref().clone()).collect()
+        self.children.iter().map(|c| c.as_ref().clone_to_node()).collect()
     }
 
     fn element(&self) -> String {
         "Root".to_string()
     }
 
-    fn clone(&self) -> Box<dyn ASTNode> {
-        let children = self.children.iter().map(|c| c.as_ref().clone()).collect();
+    fn clone_to_node(&self) -> Box<dyn ASTNode> {
+        let children = self.children.iter().map(|c| c.as_ref().clone_to_node()).collect();
         Box::new(RootASTNode { children })
+    }
+}
+
+pub struct MultiExpression {
+    pub children: Vec<Box<dyn ASTNode>>,
+}
+
+impl MultiExpression {
+    pub fn new(children: Vec<Box<dyn ASTNode>>) -> Self {
+        Self { children }
+    }
+}
+
+impl ASTNode for MultiExpression {
+    fn children(&self) -> Vec<Box<dyn ASTNode>> {
+        self.children.iter().map(|c| c.as_ref().clone_to_node()).collect()
+    }
+
+    fn element(&self) -> String {
+        "MultiExpression".to_string()
+    }
+
+    fn clone_to_node(&self) -> Box<dyn ASTNode> {
+        let children = self.children.iter().map(|c| c.as_ref().clone_to_node()).collect();
+        Box::new(MultiExpression { children })
+    }
+
+    fn eval(&self, env: &mut Environment) -> Result<Value, Error> {
+        let mut result = Value::None;
+        for child in self.children.iter() {
+            result = child.eval(env)?;
+        }
+        Ok(result)
     }
 }

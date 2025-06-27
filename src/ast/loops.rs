@@ -18,13 +18,13 @@ impl ASTNode for Loop {
 
     fn children(&self) -> Vec<Box<dyn ASTNode>> {
         self.content.iter().map(
-            |c| c.as_ref().clone()
+            |c| c.as_ref().clone_to_node()
         ).collect()
     }
 
-    fn clone(&self) -> Box<dyn ASTNode> {
+    fn clone_to_node(&self) -> Box<dyn ASTNode> {
         Box::new(Loop::new(self.content.iter().map(
-        |c| c.as_ref().clone()
+        |c| c.as_ref().clone_to_node()
         ).collect()))
     }
 
@@ -60,13 +60,13 @@ impl ASTNode for For {
 
     fn children(&self) -> Vec<Box<dyn ASTNode>> {
         self.content.iter().map(
-            |c| c.as_ref().clone()
+            |c| c.as_ref().clone_to_node()
         ).collect()
     }
 
-    fn clone(&self) -> Box<dyn ASTNode> {
-        Box::new(For::new(self.range_expr.clone(), self.content.iter().map(
-            |c| c.as_ref().clone())
+    fn clone_to_node(&self) -> Box<dyn ASTNode> {
+        Box::new(For::new(self.range_expr.clone_to_node(), self.content.iter().map(
+            |c| c.as_ref().clone_to_node())
             .collect()))
     }
 }
@@ -84,13 +84,13 @@ impl ASTNode for While {
 
     fn children(&self) -> Vec<Box<dyn ASTNode>> {
         self.content.iter().map(
-            |c| c.as_ref().clone()
+            |c| c.as_ref().clone_to_node()
         ).collect()
     }
 
-    fn clone(&self) -> Box<dyn ASTNode> {
-        Box::new(While::new(self.condition.clone(), self.content.iter().map(
-            |c| c.as_ref().clone())
+    fn clone_to_node(&self) -> Box<dyn ASTNode> {
+        Box::new(While::new(self.condition.clone_to_node(), self.content.iter().map(
+            |c| c.as_ref().clone_to_node())
             .collect()))
     }
 

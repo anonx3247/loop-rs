@@ -1,8 +1,8 @@
 use crate::ast::{ASTNode,Error};
 use crate::ast::value::Value;
 use crate::environment::environment::Environment;
-use crate::environment::environment::Type;
 use crate::ast::variable_declaration::VariableDeclaration;
+use crate::ast::type_node::Type;
 
 pub struct VariableAssignment {
     pub is_also_decl: bool,
@@ -36,16 +36,16 @@ impl ASTNode for VariableAssignment {
     }
 
     fn children(&self) -> Vec<Box<dyn ASTNode>> {
-        vec![self.expr.clone()]
+        vec![self.expr.clone_to_node()]
     }
 
-    fn clone(&self) -> Box<dyn ASTNode> {
+    fn clone_to_node(&self) -> Box<dyn ASTNode> {
         let new_assignment = VariableAssignment {
             is_also_decl: self.is_also_decl,
             mutable: self.mutable,
             type_: self.type_.clone(),
             name: self.name.clone(),
-            expr: self.expr.clone(),
+            expr: self.expr.clone_to_node(),
         };
         Box::new(new_assignment)
     }

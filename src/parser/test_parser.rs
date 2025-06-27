@@ -10,7 +10,7 @@ mod test_parser {
         let mut parser = Parser::new(lexer.tokens.clone());
         let ast = parser.parse().unwrap();
         println!("{}", ast.to_string());
-        let ast = ast.children()[0].clone();
+        let ast = ast.children()[0].clone_to_node();
         assert_eq!(ast.element(), "Add");
         assert_eq!(ast.children()[0].element(), "Int(1)");
         assert_eq!(ast.children()[1].element(), "Mul");
@@ -26,7 +26,7 @@ mod test_parser {
         let mut parser = Parser::new(lexer.tokens.clone());
         let ast = parser.parse().unwrap();
         println!("{}", ast.to_string());
-        let ast = ast.children()[0].clone();
+        let ast = ast.children()[0].clone_to_node();
         assert_eq!(ast.element(), "And");
         assert_eq!(ast.children()[0].element(), "Bool(true)");
         assert_eq!(ast.children()[1].element(), "Bool(false)");
@@ -42,7 +42,7 @@ mod test_parser {
             panic!("Error parsing expression");
         });
         println!("{}", ast.to_string());
-        let ast = ast.children()[0].clone();
+        let ast = ast.children()[0].clone_to_node();
         assert_eq!(ast.element(), "Or");
         assert_eq!(ast.children()[0].element(), "Gt");
         assert_eq!(ast.children()[0].children()[0].element(), "Float(32.5)");
@@ -60,7 +60,7 @@ mod test_parser {
         let mut parser = Parser::new(lexer.tokens.clone());
         let ast = parser.parse().unwrap();
         println!("{}", ast.to_string());
-        let ast = ast.children()[0].clone();
+        let ast = ast.children()[0].clone_to_node();
         assert_eq!(ast.element(), "Mul");
         assert_eq!(ast.children()[0].element(), "Add");
         assert_eq!(ast.children()[0].children()[0].element(), "Int(1)");
@@ -76,7 +76,7 @@ mod test_parser {
         let mut parser = Parser::new(lexer.tokens.clone());
         let ast = parser.parse().unwrap();
             println!("{}", ast.to_string());
-        let ast = ast.children()[0].clone();
+        let ast = ast.children()[0].clone_to_node();
         assert_eq!(ast.element(), "mut a : I32 =");
         assert_eq!(ast.children()[0].element(), "Int(1)");
     }

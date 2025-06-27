@@ -93,7 +93,11 @@ impl Parser {
         for op in decl_tokens.iter() {
             if let Ok(Some(_)) = self.find_first_token_skip_brackets(&op, &tokens) {
                 let (n, i) = self.parse_assignment_or_declaration_expr(&tokens);
-                return (n, i + offset);
+                let n = match n  {
+                    Ok(n) => Box::new(MultiExpression::new(n)),
+                    Err(e) => return (Err(e), i + offset),
+                };
+                return (Ok(n), i + offset);
             }
         }
 
@@ -105,7 +109,7 @@ impl Parser {
             if let Ok(Some(_)) = self.find_first_token_skip_brackets(&op, &tokens) {
                 let (node, pos) = self.parse_conditional_expr(&tokens);
                 let node = match node {
-                    Ok(node) =>  node.clone(),
+                    Ok(node) =>  node.clone_to_node(),
                     Err(e) => return (Err(e), pos),
                 };
                 return (Ok(node), pos + offset);

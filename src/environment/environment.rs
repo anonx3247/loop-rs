@@ -1,56 +1,8 @@
 use crate::ast::ast::Error;
 use crate::ast::value::Value;
+use crate::ast::type_node::Type;
 use std::collections::HashMap;
 use crate::lexer::token;
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum Type {
-    U8,
-    U16,
-    U32,
-    U64,
-    I16,
-    I32,
-    I64,
-    F32,
-    F64,
-    String,
-    Bool,
-    Generic(char),
-    UserDefined(String),
-    Option(Box<Type>),
-}
-
-impl Type {
-    pub fn from_token_type(token: token::Type) -> Self {
-        match token {
-            token::Type::U8 => Type::U8,
-            token::Type::U16 => Type::U16,
-            token::Type::U32 => Type::U32,
-            token::Type::U64 => Type::U64,
-            token::Type::I16 => Type::I16,
-            token::Type::I32 => Type::I32,
-            token::Type::I64 => Type::I64,
-            token::Type::F32 => Type::F32,
-            token::Type::F64 => Type::F64,
-            token::Type::String => Type::String,
-            token::Type::Bool => Type::Bool,
-            token::Type::U8Option => Type::Option(Box::new(Type::U8)),
-            token::Type::U16Option => Type::Option(Box::new(Type::U16)),
-            token::Type::U32Option => Type::Option(Box::new(Type::U32)),
-            token::Type::U64Option => Type::Option(Box::new(Type::U64)),
-            token::Type::I16Option => Type::Option(Box::new(Type::I16)),
-            token::Type::I32Option => Type::Option(Box::new(Type::I32)),
-            token::Type::I64Option => Type::Option(Box::new(Type::I64)),
-            token::Type::F32Option => Type::Option(Box::new(Type::F32)),
-            token::Type::F64Option => Type::Option(Box::new(Type::F64)),
-            token::Type::BoolOption => Type::Option(Box::new(Type::Bool)),
-            token::Type::StringOption => Type::Option(Box::new(Type::String)),
-            token::Type::Generic(c) => Type::Generic(c),
-            token::Type::UserDefined(s) => Type::UserDefined(s),
-        }
-    }
-}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Variable {
@@ -259,5 +211,22 @@ pub fn check_type(type_: Type, value: Value) -> Result<(), Error> {
             "Type '{:?}' is not implemented",
             type_
         ))),
+        Type::Tuple(types) => match value {
+            Value::Tuple(values) => {
+                if values.len() != types.len() {
+                    return Err(Error::RuntimeError(format!(
+                        "Tuple length mismatch: expected {} elements, got {}", types.len(), values.len()
+                    )));
+                }
+                for (value, type_) in values.iter().zip(types.iter()) {
+                    check_type(type_.clone(), value.clone())?;
+                }
+                Ok(())
+            },
+            _ => Err(Error::RuntimeError(format!(
+                "Value '{}' is not of type '{:?}'",
+                value, types)
+            )),
+        },
     }
 }
