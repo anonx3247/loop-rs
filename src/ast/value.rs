@@ -4,7 +4,7 @@ use crate::ast::tuple::{Clonable, Tuple, TupleLike};
 pub enum Value {
     Int(i64),
     Float(f64),
-    String(String),
+    String(String, bool),
     Bool(bool),
     Tuple(Vec<Value>),
     None,
@@ -16,7 +16,7 @@ impl std::fmt::Display for Value {
         match self {
             Value::Int(i) => write!(f, "{}", i),
             Value::Float(fl) => write!(f, "{}", fl),
-            Value::String(s) => write!(f, "{}", s),
+            Value::String(s, _) => write!(f, "{}", s),
             Value::Bool(b) => write!(f, "{}", b),
             Value::None => write!(f, "none"),
             Value::Tuple(values) => {

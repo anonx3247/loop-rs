@@ -77,9 +77,9 @@ impl ASTNode for BinaryOperation {
                         _ => return Err(Error::RuntimeError(RuntimeError::BinaryOperationError(BinaryOperationError::CannotPerform(self.operator.clone(), left, right)))),
                     }
                 }
-                (Value::String(l), Value::String(r)) => {
+                (Value::String(l, _), Value::String(r, _)) => {
                     match self.operator {
-                        Operator::Add => Value::String(l.clone() + &r.clone()),
+                        Operator::Add => Value::String(l.clone() + &r.clone(), false),
                         _ => return Err(Error::RuntimeError(RuntimeError::BinaryOperationError(BinaryOperationError::CannotPerform(self.operator.clone(), left, right)))),
                     }
                 }

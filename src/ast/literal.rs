@@ -12,7 +12,7 @@ impl Literal {
         Ok(Self(match token {
             token::Token::Literal(token::Literal::Int(value)) => Value::Int(value),
             token::Token::Literal(token::Literal::Float(value)) => Value::Float(value),
-            token::Token::Literal(token::Literal::String(value)) => Value::String(value),
+            token::Token::Literal(token::Literal::String(value, raw)) => Value::String(value, raw),
             token::Token::Literal(token::Literal::Bool(value)) => Value::Bool(value),
             _ => return Err(Error::ASTError(ASTError::InvalidLiteralToken(token))),
         }))
@@ -29,10 +29,11 @@ impl ASTNode for Literal {
     }
 
     fn eval(&self, _env: &mut Environment) -> Result<Value, Error> {
-        Ok(self.0.clone())
+        _env.interpolate(self.0.clone())
     }
 
     fn clone_to_node(&self) -> Box<dyn ASTNode> {
         Box::new(Literal(self.0.clone()))
     }
 }
+

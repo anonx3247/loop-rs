@@ -1,4 +1,4 @@
-use crate::lexer::token;
+use crate::lexer::{token, Lexer};
 use crate::ast::*;
 use crate::Error;
 
@@ -52,6 +52,13 @@ impl Parser {
             tokens = tokens[new_pos..].to_vec();
         }
         (Ok(Box::new(result)), tokens.len())
+    }
+
+    pub fn parse_string(string: &String) -> Result<Box<dyn ast::ASTNode>, Error> {
+        let mut lexer = Lexer::new(string.clone());
+        lexer.tokenize();
+        let mut parser = Parser::new(lexer.tokens);
+        parser.parse()
     }
 
 }

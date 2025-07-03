@@ -4,6 +4,8 @@ use crate::ast::type_node::Type;
 use crate::ast::binary_operation::BinaryOperationError;
 use std::collections::HashMap;
 use crate::Error;
+use crate::lexer::{get_string_interpolations};
+use crate::parser::parser::Parser;
 
 #[derive(Debug)]
 pub enum RuntimeError {
@@ -93,7 +95,7 @@ impl Environment {
         match value {
             Value::Int(_) => Ok(Type::I32),
             Value::Float(_) => Ok(Type::F32),
-            Value::String(_) => Ok(Type::String),
+            Value::String(_, _) => Ok(Type::String),
             Value::Bool(_) => Ok(Type::Bool),
             Value::Tuple(values) => {
                 let mut types = Vec::new();
@@ -110,6 +112,22 @@ impl Environment {
         match self.variables.get(name) {
             Some(var) => Ok(var.type_.clone()),
             _ => Err(Error::RuntimeError(RuntimeError::VariableNotFound(name.to_string()))),
+        }
+    }
+
+    pub fn interpolate(&mut self, value: Value) -> Result<Value, Error> {
+        match value {
+            Value::String(ref s, false) => {
+                let interpolations = get_string_interpolations(s);
+                let mut s = s.clone();
+                for (interpolation, index) in interpolations {
+                    let node = Parser::parse_string(&interpolation)?;
+                    let value = node.eval(self)?;
+                    s = s[..index].to_string() + &value.to_string() + &s[index+interpolation.len()+2..];
+                }
+                Ok(Value::String(s, false))
+            }
+            _ => Ok(value),
         }
     }
 }
@@ -194,7 +212,7 @@ pub fn check_type(type_: Type, value: Value) -> Result<(), Error> {
             _ => Err(Error::RuntimeError(RuntimeError::ValueNotOfType(value.to_string(), type_))),
         },
         Type::String => match value {
-            Value::String(_) => Ok(()),
+            Value::String(_, _) => Ok(()),
             _ => Err(Error::RuntimeError(RuntimeError::ValueNotOfType(value.to_string(), type_))),
         },
         Type::Bool => match value {

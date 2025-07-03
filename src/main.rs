@@ -7,7 +7,6 @@ mod interpreter;
 
 use std::env;
 use std::path::Path;
-use repl::repl;
 
 #[derive(Debug)]
 pub enum Error {

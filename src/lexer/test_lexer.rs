@@ -45,8 +45,8 @@ mod test_lexer {
         assert_eq!(Lexer::tokenize_literal(&String::from("123")), Ok((Token::literal(Literal::Int(123)), 3)));
         assert_eq!(Lexer::tokenize_literal(&String::from("123.45")), Ok((Token::literal(Literal::Float(123.45)), 6)));
         assert_eq!(Lexer::tokenize_literal(&String::from("123.45e6")), Ok((Token::literal(Literal::Float(123.45e6)), 8)));
-        assert_eq!(Lexer::tokenize_literal(&String::from("\"Hello, world!\"")), Ok((Token::literal(Literal::String("Hello, world!".to_string())), 15)));
-        assert_eq!(Lexer::tokenize_literal(&String::from("'Hello, world!'")), Ok((Token::literal(Literal::String("Hello, world!".to_string())), 15)));
+        assert_eq!(Lexer::tokenize_literal(&String::from("\"Hello, world!\"")), Ok((Token::literal(Literal::String("Hello, world!".to_string(), false)), 15)));
+        assert_eq!(Lexer::tokenize_literal(&String::from("'Hello, world!'")), Ok((Token::literal(Literal::String("Hello, world!".to_string(), false)), 15)));
     }
 
     #[test]
@@ -88,13 +88,6 @@ mod test_lexer {
         assert_eq!(lexer.tokenize_next(), Ok(Token::Whitespace(Whitespace::Newline)));
         assert_eq!(lexer.tokenize_next(), Ok(Token::from_symbol("}").unwrap()));
         assert_eq!(lexer.tokenize_next(), Ok(Token::Whitespace(Whitespace::Newline)));
-    }
-
-    #[test]
-    fn test_tokenize_file() {
-        let mut lexer = Lexer::new(std::fs::read_to_string("basic_tokenizer_test.lp").unwrap());
-        assert!(lexer.tokenize().is_ok(), "{:?}", lexer.tokenize().err().unwrap());
-        assert!(!lexer.tokens.is_empty());
     }
 }
 

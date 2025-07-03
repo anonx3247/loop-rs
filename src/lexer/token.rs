@@ -24,7 +24,7 @@ pub enum Token {
 pub enum Literal {
     Int(i64),
     Float(f64),
-    String(String),
+    String(String, bool),
     Bool(bool),
     Char(char),
     None,
@@ -48,7 +48,7 @@ impl PartialEq for Literal {
         match (self, other) {
             (Literal::Int(a), Literal::Int(b)) => a == b,
             (Literal::Float(a), Literal::Float(b)) => a == b,
-            (Literal::String(a), Literal::String(b)) => a == b,
+            (Literal::String(a, _), Literal::String(b, _)) => a == b,
             (Literal::Bool(a), Literal::Bool(b)) => a == b,
             (Literal::Char(a), Literal::Char(b)) => a == b,
             (Literal::None, Literal::None) => true,
@@ -65,7 +65,7 @@ impl Hash for Literal {
         match self {
             Literal::Int(val) => val.hash(state),
             Literal::Float(val) => val.to_bits().hash(state),
-            Literal::String(val) => val.hash(state),
+            Literal::String(val, _) => val.hash(state),
             Literal::Bool(val) => val.hash(state),
             Literal::Char(val) => val.hash(state),
             Literal::None => ().hash(state),
@@ -384,7 +384,7 @@ impl Token {
             Token::TypeDeclaration(type_decl) => format!("{:?}", &type_decl),
             Token::Loop(loop_) => format!("{:?}", &loop_),
             Token::Literal(literal) => match literal {
-                Literal::String(s) => s.clone(),
+                Literal::String(s, _) => s.clone(),
                 Literal::None => "None".to_string(),
                 _ => format!("{:?}", &literal),
             },
