@@ -9,6 +9,7 @@ pub mod loops;
 pub mod fn_declaration;
 pub mod variable_declaration;
 pub mod type_node;
+pub mod tuple;
 
 pub use ast::*;
 pub use value::*;

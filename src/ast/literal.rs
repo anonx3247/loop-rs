@@ -1,6 +1,9 @@
-use crate::ast::{ASTNode,Value, Error};
+use crate::ast::{ASTNode,Value, ASTError};
 use crate::environment::environment::Environment;
 use crate::lexer::token;
+use crate::Error;
+
+#[derive(Debug)]
 pub struct Literal(Value);
 
 impl Literal {
@@ -11,7 +14,7 @@ impl Literal {
             token::Token::Literal(token::Literal::Float(value)) => Value::Float(value),
             token::Token::Literal(token::Literal::String(value)) => Value::String(value),
             token::Token::Literal(token::Literal::Bool(value)) => Value::Bool(value),
-            _ => return Err(Error::SyntaxError(format!("Invalid literal token: {:?}", token))),
+            _ => return Err(Error::ASTError(ASTError::InvalidLiteralToken(token))),
         }))
     }
 }

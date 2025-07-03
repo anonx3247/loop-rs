@@ -77,7 +77,7 @@ mod test_parser {
         let ast = parser.parse().unwrap();
             println!("{}", ast.to_string());
         let ast = ast.children()[0].clone_to_node();
-        assert_eq!(ast.element(), "mut a : I32 =");
+        assert_eq!(ast.element(), "mut \"a\" : I32 =");
         assert_eq!(ast.children()[0].element(), "Int(1)");
     }
 
@@ -89,6 +89,9 @@ mod test_parser {
         let mut parser = Parser::new(lexer.tokens.clone());
         let ast = parser.parse().unwrap();
         println!("{}", ast.to_string());
+        let ast = ast.children()[0].clone_to_node();
+        assert_eq!(ast.element(), "mut \"a\" : [inferred] =");
+        assert_eq!(ast.children()[0].element(), "Int(1)");
     }
 
     #[test]

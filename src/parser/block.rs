@@ -1,11 +1,12 @@
-use crate::{ast::ASTNode, ast::loops::{Loop, For, While}, lexer::{token}};
+use crate::{ast::ASTNode, lexer::{token}};
 use super::parser::{Parser, ParseError};
+use crate::Error;
 
 impl Parser {
     pub fn parse_block_expr(
         &mut self, tokens: &[token::Token],
-        parse_expr: Option<fn(&mut Self, &[token::Token]) -> (Result<Box<dyn ASTNode>, ParseError>, usize)>
-    ) -> (Result<(Box<dyn ASTNode>, Option<Box<dyn ASTNode>>), ParseError>, usize) {
+        parse_expr: Option<fn(&mut Self, &[token::Token]) -> (Result<Box<dyn ASTNode>, Error>, usize)>
+    ) -> (Result<(Box<dyn ASTNode>, Option<Box<dyn ASTNode>>), Error>, usize) {
         let brace_loc = self.find_opening_brace_for(&tokens, tokens[0].clone());
         let brace_loc = match brace_loc {
             Ok(loc) => loc,
@@ -20,9 +21,9 @@ impl Parser {
             };
             Some(expr)
         } else if brace_loc > 1 && parse_expr.is_none() {
-            return (Err(ParseError::UnexpectedContentBeforeBlock), 0);
+            return (Err(Error::ParserError(ParseError::UnexpectedContentBeforeBlock)), 0);
         } else if brace_loc == 1 && parse_expr.is_some() {
-            return (Err(ParseError::UnexpectedBeginningOfBlock), 0);
+            return (Err(Error::ParserError(ParseError::UnexpectedBeginningOfBlock)), 0);
         } else {
             None
         };
@@ -31,9 +32,9 @@ impl Parser {
             Ok(loc) => loc,
             Err(e) => return (Err(e), brace_loc)
         };
-        let content = match self.parse_tokens(&tokens[brace_loc+1..matching_loc]) {
-            Ok(c) => c,
-            Err(e) => return (Err(e), matching_loc)
+        let (content, _) = match self.parse_tokens(&tokens[brace_loc+1..matching_loc]) {
+            (Ok(c), loc) => (c, loc),
+            (Err(e), loc) => return (Err(e), brace_loc + loc)
         };
 
         (Ok((content, expr)), matching_loc)

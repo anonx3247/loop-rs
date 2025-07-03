@@ -1,6 +1,13 @@
-use crate::ast::{ASTNode,Value, Error};
+use crate::ast::tuple::{Clonable, Tuple, TupleLike};
+use crate::ast::{ASTNode,Value};
 use crate::environment::environment::{Environment};
 use crate::lexer::token;
+use crate::Error;
+
+#[derive(Debug)]
+pub enum TypeError {
+    CannotMakeTupleType
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Type {
@@ -19,6 +26,12 @@ pub enum Type {
     UserDefined(String),
     Option(Box<Type>),
     Tuple(Vec<Type>),
+}
+
+impl Clonable for Type {
+    fn clone_element(&self) -> Self {
+        self.clone()
+    }
 }
 
 impl Type {
@@ -50,6 +63,20 @@ impl Type {
             token::Type::UserDefined(s) => Type::UserDefined(s),
         }
     }
+    
+    pub fn from_tuple(tuple: Tuple<Type>) -> Result<Self, TypeError> {
+        match tuple {
+            Tuple::Empty => Err(TypeError::CannotMakeTupleType),
+            Tuple::Element(e) => Ok(e),
+            Tuple::List(elements) => {
+                let mut result = vec![];
+                for element in elements.iter() {
+                    result.push(Type::from_tuple(element.clone())?);
+                }
+                Ok(Type::Tuple(result))
+            }
+        }
+    }
 }
 
 impl ASTNode for Type {
@@ -67,5 +94,27 @@ impl ASTNode for Type {
 
     fn clone_to_node(&self) -> Box<dyn ASTNode> {
         Box::new(self.clone())
+    }
+}
+
+
+impl TupleLike<Type> for Type {
+    fn to_tuple(&self) -> Tuple<Type> {
+        match self {
+            Type::Tuple(types) => {
+                let mut tuple_types = Vec::new();
+                for type_ in types {
+                    tuple_types.push(type_.to_tuple());
+                }
+                if tuple_types.len() == 0 {
+                    Tuple::Empty
+                } else if tuple_types.len() == 1 {
+                    tuple_types[0].clone()
+                } else {
+                    Tuple::List(tuple_types)
+                }
+            }
+            _ => Tuple::Element(self.clone()),
+        }
     }
 }

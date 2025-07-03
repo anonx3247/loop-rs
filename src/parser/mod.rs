@@ -5,6 +5,7 @@ mod declaration_assignment;
 mod binary;
 mod conditional;
 mod expr;
+mod type_expr;
 mod utils;
 mod loops;
 mod block;

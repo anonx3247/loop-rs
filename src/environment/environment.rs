@@ -1,8 +1,24 @@
-use crate::ast::ast::Error;
+use crate::ast::assignment::AssignmentError;
 use crate::ast::value::Value;
 use crate::ast::type_node::Type;
+use crate::ast::binary_operation::BinaryOperationError;
 use std::collections::HashMap;
-use crate::lexer::token;
+use crate::Error;
+
+#[derive(Debug)]
+pub enum RuntimeError {
+    VariableNotFound(String),
+    VariableNotInitialized(String),
+    ValueOutOfBounds(String, Type),
+    ValueNotOfType(String, Type),
+    TupleLengthMismatch(usize, usize),
+    CannotAssignToImmutableVariable(String),
+    CannotInferType(String),
+    TypeNotImplemented(Type),
+    ValueNotOfTupleType(String, Vec<Type>),
+    BinaryOperationError(BinaryOperationError),
+    AssignmentError(AssignmentError),
+}   
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Variable {
@@ -24,13 +40,7 @@ impl Environment {
         }
     }
 
-    pub fn declare_assign(&mut self, name: String, value: Value, mutable: bool, type_: Option<Type>, is_decl: bool) -> Result<(), Error> {
-        if self.variables.contains_key(&name) && !is_decl {
-            return Err(Error::RuntimeError(format!(
-                "Variable '{}' already declared",
-                name
-            )));
-        }
+    pub fn declare_assign(&mut self, name: String, value: Value, mutable: bool, type_: Option<Type>) -> Result<(), Error> {
         let type_ = if type_.is_some() {
             let type_ = type_.unwrap();
             check_type(type_.clone(), value.clone())?;
@@ -38,7 +48,7 @@ impl Environment {
         } else {
             self.infer_type(value.clone())?
         };
-        self.variables.insert(name, Variable { initialized: true, value: value.clone(), mutable, type_ });
+        self.variables.insert(name, Variable { initialized: true, value, mutable, type_ });
         Ok(())
     }
 
@@ -51,40 +61,31 @@ impl Environment {
         match self.variables.get_mut(name) {
             Some(var) => {
                 if !var.mutable && var.initialized {
-                    return Err(Error::RuntimeError(format!(
-                        "Cannot assign to immutable variable '{}'",
-                        name
-                    )));
+                    return Err(Error::RuntimeError(RuntimeError::CannotAssignToImmutableVariable(name.to_string())));
                 }
                 check_type(var.type_.clone(), value.clone())?;
                 var.value = value.clone();
                 var.initialized = true;
                 Ok(value)
             }
-            _ => Err(Error::RuntimeError(format!(
-                "Variable '{}' not found for assignment",
-                name
-            ))),
+            _ => Err(Error::RuntimeError(RuntimeError::VariableNotFound(name.to_string()))),
         }
     }
 
     pub fn lookup_mut(&mut self, name: &str) -> Result<bool, Error> {
         match self.variables.get_mut(name) {
             Some(var) => Ok(var.mutable),
-            _ => Err(Error::RuntimeError(format!(
-                "Variable '{}' not found",
-                name
-            ))),
+            _ => Err(Error::RuntimeError(RuntimeError::VariableNotFound(name.to_string()))),
         }
     }
 
     pub fn lookup(&self, name: &str) -> Result<Value, Error> {
         match self.variables.get(name) {
-            Some(var) => Ok(var.value.clone()),
-            _ => Err(Error::RuntimeError(format!(
-                "Variable '{}' not found",
-                name
-            ))),
+            Some(var) => match var.initialized {
+                true => Ok(var.value.clone()),
+                false => Err(Error::RuntimeError(RuntimeError::VariableNotInitialized(name.to_string()))),
+            },
+            _ => Err(Error::RuntimeError(RuntimeError::VariableNotFound(name.to_string()))),
         }
     }
 
@@ -94,12 +95,23 @@ impl Environment {
             Value::Float(_) => Ok(Type::F32),
             Value::String(_) => Ok(Type::String),
             Value::Bool(_) => Ok(Type::Bool),
-            _ => Err(Error::RuntimeError(format!(
-                "Cannot infer type of value '{}'",
-                value
-            ))),
+            Value::Tuple(values) => {
+                let mut types = Vec::new();
+                for value in values {
+                    types.push(self.infer_type(value)?);
+                }
+                Ok(Type::Tuple(types))
+            },
+            _ => Err(Error::RuntimeError(RuntimeError::CannotInferType(value.to_string()))),
         }
     } 
+
+    pub fn get_type(&self, name: &str) -> Result<Type, Error> {
+        match self.variables.get(name) {
+            Some(var) => Ok(var.type_.clone()),
+            _ => Err(Error::RuntimeError(RuntimeError::VariableNotFound(name.to_string()))),
+        }
+    }
 }
 
 pub fn check_bounds(value: Value, type_: Type) -> Result<(), Error> {
@@ -166,9 +178,7 @@ pub fn check_bounds(value: Value, type_: Type) -> Result<(), Error> {
         },
         _ => {}
     }
-    Err(Error::RuntimeError(format!(
-        "Value '{}' is out of bounds for type '{:?}'",
-        value, type_)))
+    Err(Error::RuntimeError(RuntimeError::ValueOutOfBounds(value.to_string(), type_)))
 }
 
 
@@ -176,57 +186,37 @@ pub fn check_type(type_: Type, value: Value) -> Result<(), Error> {
     match type_ {
         Type::I32 | Type::I64 | Type::I16 | Type::U8 | Type::U16 | Type::U32 | Type::U64 => match value {
             Value::Int(_) => check_bounds(value, type_),
-            _ => Err(Error::RuntimeError(format!(
-                "Value '{}' is not of type '{:?}'",
-                value, type_
-            ))),
+            _ => Err(Error::RuntimeError(RuntimeError::ValueNotOfType(value.to_string(), type_))),
         },
         Type::F32 | Type::F64 => match value {
             Value::Float(_) => check_bounds(value, type_),
             Value::Int(_) => check_bounds(value, type_),
-            _ => Err(Error::RuntimeError(format!(
-                "Value '{}' is not of type '{:?}'",
-                value, type_
-            ))),
+            _ => Err(Error::RuntimeError(RuntimeError::ValueNotOfType(value.to_string(), type_))),
         },
         Type::String => match value {
             Value::String(_) => Ok(()),
-            _ => Err(Error::RuntimeError(format!(
-                "Value '{}' is not of type '{:?}'",
-                value, type_
-            ))),
+            _ => Err(Error::RuntimeError(RuntimeError::ValueNotOfType(value.to_string(), type_))),
         },
         Type::Bool => match value {
             Value::Bool(_) => Ok(()),
-            _ => Err(Error::RuntimeError(format!(
-                "Value '{}' is not of type '{:?}'",
-                value, type_
-            ))),
+            _ => Err(Error::RuntimeError(RuntimeError::ValueNotOfType(value.to_string(), type_))),
         },
         Type::Option(inner) => match value {
             Value::None => Ok(()),
             _ => check_type(*inner, value),
         },
-        Type::Generic(_) |  Type::UserDefined(_) => Err(Error::RuntimeError(format!(
-            "Type '{:?}' is not implemented",
-            type_
-        ))),
+        Type::Generic(_) |  Type::UserDefined(_) => Err(Error::RuntimeError(RuntimeError::TypeNotImplemented(type_))),
         Type::Tuple(types) => match value {
             Value::Tuple(values) => {
                 if values.len() != types.len() {
-                    return Err(Error::RuntimeError(format!(
-                        "Tuple length mismatch: expected {} elements, got {}", types.len(), values.len()
-                    )));
+                    return Err(Error::RuntimeError(RuntimeError::TupleLengthMismatch(types.len(), values.len())));
                 }
                 for (value, type_) in values.iter().zip(types.iter()) {
                     check_type(type_.clone(), value.clone())?;
                 }
                 Ok(())
             },
-            _ => Err(Error::RuntimeError(format!(
-                "Value '{}' is not of type '{:?}'",
-                value, types)
-            )),
+            _ => Err(Error::RuntimeError(RuntimeError::ValueNotOfTupleType(value.to_string(), types))),
         },
     }
 }

@@ -1,7 +1,10 @@
-use crate::ast::{ASTNode,Value, Error};
+use crate::ast::tuple::Clonable;
+use crate::ast::{ASTNode,Value, ASTError};
 use crate::environment::environment::Environment;
 use crate::lexer::token;
+use crate::Error;
 
+#[derive(Debug, Clone)]
 pub struct Identifier(String);
 
 impl Identifier {
@@ -9,8 +12,14 @@ impl Identifier {
     pub fn from_token(token: token::Token) -> Result<Self, Error> {
         Ok(Self(match token {
             token::Token::Identifier(name) => name,
-            _ => return Err(Error::SyntaxError(format!("Invalid identifier token: {:?}", token))),
+            _ => return Err(Error::ASTError(ASTError::InvalidIdentifierToken(token))),
         }))
+    }
+}
+
+impl Clonable for Identifier {
+    fn clone_element(&self) -> Self {
+        self.clone()
     }
 }
 

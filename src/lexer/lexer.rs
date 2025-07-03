@@ -7,6 +7,22 @@ pub struct Lexer {
     pub tokens: Vec<Token>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LexerError {
+    NoMatchingSymbol(String),
+    NoMatchingKeyword(String),
+    NoMatchingBaseType(String),
+    NoMatchingIdentifier(String),
+    NoMatchingCustomType(String),
+    NoMatchingLiteral(String),
+    CouldNotTokenizeWhitespace,
+    CouldNotTokenize(String),
+    InvalidFloatLiteral(String),
+    InvalidIntegerLiteral(String),
+    InvalidStringLiteral(String),
+    InvalidComment(String),
+}
+
 impl Lexer {
     pub fn new(source: String) -> Self {
         Self {
@@ -22,7 +38,7 @@ impl Lexer {
         }
     }
 
-    pub fn tokenize(&mut self) -> Result<(), String> {
+    pub fn tokenize(&mut self) -> Result<(), LexerError> {
         while self.source.len() > 0 {
             self.tokenize_next()?;
         }
@@ -71,7 +87,7 @@ impl Lexer {
         }
     }
 
-    pub fn tokenize_next(&mut self) -> Result<Token, String> {
+    pub fn tokenize_next(&mut self) -> Result<Token, LexerError> {
         let (token, _) = self.tokenize_next_with_index()?;
         if token != Token::Whitespace(Whitespace::Space) {
             self.tokens.push(token.clone())
@@ -81,7 +97,7 @@ impl Lexer {
         Ok(token)
     }
 
-    pub fn tokenize_next_with_index(&mut self) -> Result<(Token, usize), String> {
+    pub fn tokenize_next_with_index(&mut self) -> Result<(Token, usize), LexerError> {
         let result = {
             let whitespace_re = Regex::new(r"^[\s\t\n]+").unwrap();
             let string_re = Regex::new(r#"^["']"#).unwrap();
@@ -104,16 +120,16 @@ impl Lexer {
             } else {
                 match Self::tokenize_symbol(&self.source) {
                     Ok(r) => Ok(r),
-                    Err(e1) => match Self::tokenize_keyword(&self.source) {
+                    Err(_) => match Self::tokenize_keyword(&self.source) {
                         Ok(r) => Ok(r),
-                        Err(e2) => match Self::tokenize_base_type(&self.source) {
+                        Err(_) => match Self::tokenize_base_type(&self.source) {
                             Ok(r) => Ok(r),
-                            Err(e3) => if identifier_re.is_match(&self.source) {
+                            Err(_) => if identifier_re.is_match(&self.source) {
                                 Self::tokenize_identifier(&self.source)
                             } else if custom_type_re.is_match(&self.source) {
                                 Self::tokenize_custom_type(&self.source)
                             } else {
-                                Err(format!("{}\n{}\n{}", e1, e2, e3))
+                                Err(LexerError::CouldNotTokenize(preview(&self.source)))
                             }
                         }
                     }
@@ -131,28 +147,28 @@ impl Lexer {
         Ok((token, index))
     }
 
-    pub fn tokenize_symbol(s: &String) -> Result<(Token, usize), String> {
+    pub fn tokenize_symbol(s: &String) -> Result<(Token, usize), LexerError> {
         match Self::tokenize_from_map(s, get_symbols_map()) {
             Ok(r) => Ok(r),
-            Err(_) => Err(format!("no matching symbol found: {}", preview(s))),
+            Err(_) => Err(LexerError::NoMatchingSymbol(preview(s))),
         }
     }
 
-    pub fn tokenize_keyword(s: &String) -> Result<(Token, usize), String> {
+    pub fn tokenize_keyword(s: &String) -> Result<(Token, usize), LexerError> {
         match Self::tokenize_from_map(s, get_keywords_map()) {
             Ok(r) => Ok(r),
-            Err(_) => Err(format!("no matching keyword found: {}", preview(s))),
+            Err(_) => Err(LexerError::NoMatchingKeyword(preview(s))),
         }
     }
 
-    pub fn tokenize_base_type(s: &String) -> Result<(Token, usize), String> {
+    pub fn tokenize_base_type(s: &String) -> Result<(Token, usize), LexerError> {
         match Self::tokenize_from_map(s, get_base_types_map()) {
             Ok(r) => Ok(r),
-            Err(_) => Err(format!("no matching base type found: {}", preview(s))),
+            Err(_) => Err(LexerError::NoMatchingBaseType(preview(s))),
         }
     }
 
-    fn tokenize_from_map(s: &String, map: HashMap<&str, Token>) -> Result<(Token, usize), String> {
+    fn tokenize_from_map(s: &String, map: HashMap<&str, Token>) -> Result<(Token, usize), LexerError> {
         let mut sorted_map = map.iter().collect::<Vec<(&&str, &Token)>>();
         sorted_map.sort_by(|(k, _), (k2, _)| k.len().cmp(&k2.len()));
         sorted_map.reverse();
@@ -161,15 +177,15 @@ impl Lexer {
                 return Ok((token.clone(), base_type.len()));
             }
         }
-        Err(s.clone())
+        Err(LexerError::NoMatchingBaseType(s.clone()))
     }
 
-    pub fn tokenize_custom_type(custom_type: &String) -> Result<(Token, usize), String> {
+    pub fn tokenize_custom_type(custom_type: &String) -> Result<(Token, usize), LexerError> {
         let (custom_type, index) = index_until_boundary(custom_type.as_str());
         Ok((Token::custom_type(custom_type), index))
     }
 
-    pub fn tokenize_literal(s: &String) -> Result<(Token, usize), String> {
+    pub fn tokenize_literal(s: &String) -> Result<(Token, usize), LexerError> {
         let (literal, index) = match Literal::tokenize_literal(s) {
             Ok((literal, index)) => (literal, index),
             Err(e) => return Err(e),
@@ -177,12 +193,12 @@ impl Lexer {
         Ok((Token::Literal(literal), index))
     }
 
-    pub fn tokenize_comment(comment: &String) -> Result<(Token, usize), String> {
+    pub fn tokenize_comment(comment: &String) -> Result<(Token, usize), LexerError> {
         let (comment, index) = index_until_char(comment.as_str(), '\n');
         Ok((Token::Comment(Comment::SingleLine(String::from(comment))), index))
     }   
 
-    pub fn tokenize_whitespace(whitespace: &String) -> Result<(Token, usize), String> {
+    pub fn tokenize_whitespace(whitespace: &String) -> Result<(Token, usize), LexerError> {
         let re = regex::Regex::new(r"^([\s\t]*[\n]+[\s\t]*)|([\s\t]+)").unwrap();
         if let Some(captures) = re.captures(whitespace) {
             let spaces = captures.get(2).map_or("", |m| m.as_str());
@@ -195,10 +211,10 @@ impl Lexer {
             }
         }
 
-        Err(String::from("could not tokenize whitespace"))
+        Err(LexerError::CouldNotTokenizeWhitespace)
     }
 
-    pub fn tokenize_identifier(identifier: &String) -> Result<(Token, usize), String> {
+    pub fn tokenize_identifier(identifier: &String) -> Result<(Token, usize), LexerError> {
         let (identifier, index) = index_until_boundary_excluding(identifier.as_str(), vec!['_']);
         Ok((Token::Identifier(String::from(identifier)), index))
     }
@@ -235,7 +251,7 @@ fn index_until_char(literal: &str, char: char) -> (&str, usize) {
 }
 
 impl Literal {
-    fn tokenize_float(literal: &String) -> Result<(Literal, usize), String> {
+    fn tokenize_float(literal: &String) -> Result<(Literal, usize), LexerError> {
         let (literal, index) = index_until_boundary_excluding(literal.as_str(), vec!['.']);
 
         // first determine if there is a period in the expression:
@@ -247,36 +263,36 @@ impl Literal {
 
         if let Some(captures) = float_regex.captures(literal) {
             let base = match captures.get(1) {
-                Some(b) => b.as_str().parse::<f64>().map_err(|e| e.to_string()),
-                _ => Err(format!("Invalid float literal (no base): {}", literal.to_string())),
+                Some(b) => b.as_str().parse::<f64>().map_err(|_| LexerError::InvalidFloatLiteral(literal.to_string())),
+                _ => Err(LexerError::InvalidFloatLiteral(literal.to_string())),
             }?;
             let exp = match captures.get(2) {
-                Some(e) => e.as_str().parse::<i32>().map_err(|e| e.to_string()),
+                Some(e) => e.as_str().parse::<i32>().map_err(|_| LexerError::InvalidFloatLiteral(literal.to_string())),
                 _ => Ok(0),
             }?;
             
             Ok((Literal::Float(base * 10_f64.powf(exp as f64)), index))
 
         } else {
-            Err(format!("Invalid float literal: {}", literal.to_string()))
+            Err(LexerError::InvalidFloatLiteral(literal.to_string()))
         }
     }
 
-    fn tokenize_int(literal: &String) -> Result<(Literal, usize), String> {
+    fn tokenize_int(literal: &String) -> Result<(Literal, usize), LexerError> {
         let (literal, index) = index_until_boundary(literal.as_str());
         let int_regex = regex::Regex::new(r"^-?\d+$").unwrap();
         
         if int_regex.is_match(literal) {
             match literal.parse::<i64>() {
                 Ok(i) => Ok((Literal::Int(i), index)),
-                Err(_) => Err(format!("Invalid integer literal: {}", literal.to_string())),
+                Err(_) => Err(LexerError::InvalidIntegerLiteral(literal.to_string())),
             }
         } else {
-            Err(format!("Invalid integer literal: {}", literal.to_string()))
+            Err(LexerError::InvalidIntegerLiteral(literal.to_string()))
         }
     }
     
-    pub fn tokenize_string(literal: &String) -> Result<(Literal, usize), String> {
+    pub fn tokenize_string(literal: &String) -> Result<(Literal, usize), LexerError> {
         let string_regex = regex::Regex::new(r#"^([^"']*?)(['"'])"#).unwrap();
         
         if literal.starts_with('"') || literal.starts_with('\'') {
@@ -285,14 +301,14 @@ impl Literal {
                 let string_content = captures.get(1).unwrap().as_str();
                 Ok((Literal::String(string_content.to_string()), string_content.len() + 2))
             } else {
-                Err(format!("Invalid string literal: {}", literal.to_string()))
+                Err(LexerError::InvalidStringLiteral(literal.to_string()))
             }
         } else {
-            Err(format!("Invalid string literal: {}", literal.to_string()))
+            Err(LexerError::InvalidStringLiteral(literal.to_string()))
         }
     }
     
-    pub fn tokenize_literal(literal: &String) -> Result<(Literal, usize), String> {
+    pub fn tokenize_literal(literal: &String) -> Result<(Literal, usize), LexerError> {
         let true_re = regex::Regex::new(r"^true").unwrap();
         let false_re = regex::Regex::new(r"^false").unwrap();
         let none_re = regex::Regex::new(r"^none").unwrap();
@@ -316,13 +332,13 @@ impl Literal {
 }
 
 
-pub fn tokenize_comment(comment: &String) -> Result<(Comment, usize), String> {
+pub fn tokenize_comment(comment: &String) -> Result<(Comment, usize), LexerError> {
     match comment {
         _ if comment.starts_with("--") => {
             let (comment, index) = index_until_char(comment.as_str(), '\n');
             Ok((Comment::SingleLine(String::from(comment)), index))
         }
-        _ => Err(format!("Invalid comment: {}", comment)),
+        _ => Err(LexerError::InvalidComment(comment.to_string())),
     }
 }
 

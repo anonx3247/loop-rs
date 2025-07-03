@@ -1,8 +1,9 @@
 use crate::lexer::token;
 use super::parser::{Parser, ParseError};
+use crate::Error;
 
 impl Parser {
-    pub fn find_first_token_skip_brackets(&mut self, token: &token::Token, tokens: &[token::Token]) -> Result<Option<usize>, ParseError> {
+    pub fn find_first_token_skip_brackets(&mut self, token: &token::Token, tokens: &[token::Token]) -> Result<Option<usize>, Error> {
         let mut i = 0;
         while i < tokens.len() {
             if tokens[i] == *token {
@@ -19,7 +20,7 @@ impl Parser {
         Ok(None)
     }
 
-    pub fn find_matching_bracket(&mut self, tokens: &[token::Token], loc: usize) -> Result<usize, ParseError> {
+    pub fn find_matching_bracket(&mut self, tokens: &[token::Token], loc: usize) -> Result<usize, Error> {
         let bracket_pairs = [
             (token::Token::Bracket(token::Bracket::OpenParen), token::Token::Bracket(token::Bracket::CloseParen)),
             (token::Token::Bracket(token::Bracket::OpenBrace), token::Token::Bracket(token::Bracket::CloseBrace)),
@@ -27,7 +28,7 @@ impl Parser {
         ];
         let open_token = &tokens[loc];
         let (open, close) = bracket_pairs.iter().find(|(open, _)| open_token == open)
-            .ok_or(ParseError::NoMatchingBracket)?;
+            .ok_or(Error::ParserError(ParseError::NoMatchingBracket))?;
         let mut count = 1;
         let mut i = loc + 1;
         while i < tokens.len() {
@@ -41,18 +42,18 @@ impl Parser {
             }
             i += 1;
         }
-        Err(ParseError::NoMatchingBracket)
+        Err(Error::ParserError(ParseError::NoMatchingBracket))
     }
 
-    pub fn find_opening_brace_for(&mut self, tokens: &[token::Token], keyword: token::Token) -> Result<usize, ParseError> {
+    pub fn find_opening_brace_for(&mut self, tokens: &[token::Token], keyword: token::Token) -> Result<usize, Error> {
         if tokens.len() <= 1 {
-            return Err(ParseError::NoMatchingBraceForKeyword(keyword));
+            return Err(Error::ParserError(ParseError::NoMatchingBraceForKeyword(keyword)));
         }
         match keyword {
             token::Token::Conditional(token::Conditional::Else)
             | token::Token::Loop(token::Loop::Loop) => {
                 if tokens[1] != token::Token::Bracket(token::Bracket::OpenBrace) {
-                    return Err(ParseError::NoMatchingBraceForKeyword(keyword));
+                    return Err(Error::ParserError(ParseError::NoMatchingBraceForKeyword(keyword)));
                 } else {
                     return Ok(1)
                 }
@@ -82,7 +83,7 @@ impl Parser {
                 }
             }
         }
-        Err(ParseError::NoMatchingBraceForKeyword(keyword))
+        Err(Error::ParserError(ParseError::NoMatchingBraceForKeyword(keyword)))
     }
 
     pub fn find_next_non_whitespace_token(&mut self, tokens: &[token::Token]) -> Option<token::Token> {
@@ -94,7 +95,33 @@ impl Parser {
         None
     }
 
+    pub fn is_type_expr(&self, tokens: &[token::Token]) -> bool {
+        if tokens.len() > 0 && matches!(tokens[0], token::Token::Type(_)) {
+            return true;
+        }
+        false
+    }
+
+    pub fn is_in_parenthesis(&self, tokens: &[token::Token]) -> bool {
+        if tokens.len() > 0 && matches!(tokens[0], token::Token::Bracket(token::Bracket::OpenParen)) && matches!(tokens[tokens.len()-1], token::Token::Bracket(token::Bracket::CloseParen)) {
+            return true;
+        }
+        false
+    }
+
+    pub fn is_tuple_expr(&mut self, tokens: &[token::Token]) -> bool {
+        if tokens.len() > 0 && matches!(tokens[0], token::Token::Bracket(token::Bracket::OpenParen)) && matches!(tokens[tokens.len()-1], token::Token::Bracket(token::Bracket::CloseParen)) {
+            return self.is_tuple_expr(&tokens[1..tokens.len()-1]);
+        } else {
+            if let Ok(Some(_)) = self.find_first_token_skip_brackets(&token::Token::Punctuation(token::Punctuation::Comma), tokens) {
+                return true;
+            }
+            return false;
+        }
+    }
+
     pub fn find_expr_possible_boundary(&mut self, tokens: &[token::Token], assign_mode: bool, loop_mode: bool) -> usize {
+        let is_type_expr = self.is_type_expr(tokens);
         let mut cursor = 0;
         while cursor < tokens.len() {
             match tokens[cursor] {
@@ -110,15 +137,38 @@ impl Parser {
                 => {
                     return cursor
                 },
-                token::Token::Type(_)
-                | token::Token::VariableDeclaration(_) => {
+                token::Token::VariableDeclaration(_) => {
                     if !assign_mode {
                         return cursor;
                     } else {
                         cursor += 1;
                     }
                 }
+                token::Token::Type(_) => {
+                    if !is_type_expr && !assign_mode {
+                        return cursor;
+                    } else if !assign_mode {
+                        if cursor + 1 >= tokens.len() {
+                            return cursor+1;
+                        } else {
+                            match tokens[cursor +1] {
+                                token::Token::Punctuation(token::Punctuation::Comma) | token::Token::Bracket(_) => {
+                                    cursor += 1;
+                                },
+                                _ => {
+                                    return cursor+1;
+                                }
+                            }
+                        }
+                    } else {
+                        cursor += 1;
+                    }
+                }
                 token::Token::Whitespace(token::Whitespace::Newline) => {
+                    if is_type_expr {
+                        return cursor;
+                    }
+
                     if cursor + 1 < tokens.len() {
                         if let token::Token::Whitespace(token::Whitespace::Newline) = tokens[cursor+1] {
                             return cursor
@@ -150,7 +200,20 @@ impl Parser {
                             return cursor; // If we can't find a matching bracket, we stop here
                         }
                     }
-                }
+                },
+                token::Token::Operator(token::Operator::EqualSign)
+                | token::Token::Operator(token::Operator::Assign)
+                | token::Token::Operator(token::Operator::PlusAssign)
+                | token::Token::Operator(token::Operator::MinusAssign)
+                | token::Token::Operator(token::Operator::MulAssign)
+                | token::Token::Operator(token::Operator::DivAssign)
+                | token::Token::Operator(token::Operator::ModAssign) => {
+                    if !assign_mode {
+                        return cursor;
+                    } else {
+                        cursor += 1;
+                    }
+                },
                 _ => {
                     cursor += 1;
                 }

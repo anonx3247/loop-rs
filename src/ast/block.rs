@@ -1,6 +1,8 @@
-use crate::ast::{ASTNode,Value, Error};
+use crate::ast::{ASTNode,Value};
+use crate::Error;
 use crate::environment::environment::Environment;
 
+#[derive(Debug)]
 pub struct IfBlock {
     pub condition: Box<dyn ASTNode>,
     pub content: Vec<Box<dyn ASTNode>>,
@@ -106,6 +108,7 @@ impl ASTNode for IfBlock {
     }
 }
 
+#[derive(Debug)]
 pub struct ElseBlock {
     pub content: Vec<Box<dyn ASTNode>>,
 }
@@ -178,6 +181,7 @@ impl ASTNode for ElseBlock {
     }
 }
 
+#[derive(Debug)]
 pub struct ElifBlock {
     pub condition: Box<dyn ASTNode>,
     pub content: Vec<Box<dyn ASTNode>>,

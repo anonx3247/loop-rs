@@ -1,108 +1,121 @@
-use crate::{ast::ASTNode, ast::loops::{Loop, For, While}, lexer::{token}};
-use super::parser::{Parser, ParseError};
+use crate::{ast::tuple::{Clonable, Tuple, TupleError}, lexer::token};
+use super::parser::Parser;
+use crate::Error;
 
 impl Parser {
-    pub fn parse_split_on_commas_expr(
-        &mut self, tokens: &[token::Token],
-        parse_expr: fn(&mut Self, &[token::Token]) -> (Result<Box<dyn ASTNode>, ParseError>, usize)
-    ) -> (Result<Vec<Box<dyn ASTNode>>, ParseError>, usize) {
-        let mut token_blocks = vec![];
-        let mut current_tokens = tokens;
-        let mut cursor = 0;
-        while cursor < tokens.len() && current_tokens.len() > 0 {
-            let next_pos = match self.find_first_token_skip_brackets(&token::Token::Punctuation(token::Punctuation::Comma), &current_tokens) {
-                Ok(pos) => pos,
-                Err(e) => return (Err(e), cursor)
-            };
-            if next_pos.is_some() {
-                token_blocks.push(current_tokens[..next_pos.unwrap()].to_vec());
-                cursor = next_pos.unwrap()+1;
-                current_tokens = &current_tokens[cursor..];
-            } else {
-                token_blocks.push(current_tokens.to_vec());
-                cursor = tokens.len();
+    pub fn parse_tuple<K: Clonable>(&mut self, tuple: Tuple<Vec<token::Token>>, parse_expr: fn(&mut Self, &[token::Token]) -> Result<K, Error>) -> Result<Tuple<K>, Error> {
+        match tuple {
+            Tuple::Empty => return Ok(Tuple::Empty),
+            Tuple::Element(tokens) => {
+                let node = parse_expr(self, &tokens)?;
+                return Ok(Tuple::Element(node));
+            }
+            Tuple::List(elements) => {
+                let mut out_tuple = vec![];
+                for e in elements.iter() {
+                    out_tuple.push(self.parse_tuple(e.clone(), parse_expr)?);
+                }
+                return Ok(Tuple::List(out_tuple));
             }
         }
-
-        let mut parsed_blocks = vec![];
-        for t in token_blocks.iter() {
-            match parse_expr(self, t) {
-                (Ok(e), l) => parsed_blocks.push(e),
-                (Err(e), l) => return (Err(e), l)
-            }
-        }
-
-        (Ok(parsed_blocks), tokens.len())
     }
 
-    pub fn get_tuple_length(&mut self, tokens: &[token::Token]) -> Result<usize, ParseError> {
-        let mut length = 1;
-        let mut cursor = 0;
-        while cursor < tokens.len() {
-            let next_pos = match self.find_first_token_skip_brackets(&token::Token::Punctuation(token::Punctuation::Comma), &tokens[cursor..]) {
-                Ok(pos) => pos,
-                Err(e) => return Err(e)
-            };
-            if next_pos.is_some() {
-                length += 1;
-                cursor += next_pos.unwrap() + 1;
-            } else {
-                return Ok(length);
+
+    pub fn is_identifier_tuple(&mut self, tuple: Tuple<Vec<token::Token>>) -> bool {
+        match tuple {
+            Tuple::Empty => return false,
+            Tuple::Element(tokens) => {
+                if tokens.len() == 1 && matches!(tokens[0], token::Token::Identifier(_)) {
+                    return true;
+                }
+                return false;
+            }
+            Tuple::List(elements) => {
+                for e in elements.iter() {
+                    if !self.is_identifier_tuple(e.clone()) {
+                        return false;
+                    }
+                }
+                return true;
             }
         }
-        Ok(length)
     }
 
-    pub fn parse_one_or_n_exprs<T>(&mut self, tokens: &[token::Token], amount: usize, parse_expr: fn(&mut Self, &[token::Token]) -> (Result<T, ParseError>, usize)) -> (Result<Vec<T>, ParseError>, usize) {
-        let mut nodes = vec![];
-        let mut has_many = true;
+    pub fn make_tuple(&mut self, tokens: &[token::Token]) -> Result<Tuple<Vec<token::Token>>, Error> {
+        // note this function expects the entire token list to be the tuple
 
         // first check if there is only one or many:
         let next_comma = match self.find_first_token_skip_brackets(&token::Token::Punctuation(token::Punctuation::Comma), &tokens) {
             Ok(pos) => pos,
-            Err(e) => return (Err(e), 0)
+            Err(e) => return Err(e)
         };
-        let next_boundary = self.find_expr_possible_boundary(tokens, false, false);
 
-        if next_comma.is_none() || (next_comma.is_some() && next_comma.unwrap() > next_boundary) {
-            has_many = false;
+        if next_comma.is_none() {
+            /*
+            if tokens.len() >= 2 && tokens[0] == token::Token::Bracket(token::Bracket::OpenParen) && tokens[tokens.len()-1] == token::Token::Bracket(token::Bracket::CloseParen) {
+                let inner_tuple = self.make_tuple(&tokens[1..tokens.len()-1])?;
+                return Ok(Tuple::List(vec![inner_tuple]));
+            } else {
+                return Ok(Tuple::Element(tokens.to_vec()));
+            }
+            */
+            return Ok(Tuple::Element(tokens.to_vec()));
         }
 
-        if !has_many || amount == 1 {
-            let (node, pos) = parse_expr(self, tokens);
-            let node = match node {
-                Ok(node) => node,
-                Err(e) => return (Err(e), pos)
+        let mut tuple = vec![tokens[..next_comma.unwrap()].to_vec()];
+        let mut cursor = next_comma.unwrap() + 1;
+        while cursor < tokens.len() {
+            let next_comma = match self.find_first_token_skip_brackets(&token::Token::Punctuation(token::Punctuation::Comma), &tokens[cursor..]) {
+                Ok(pos) => pos,
+                Err(e) => return Err(e)
             };
-            nodes = vec![node];
-            return (Ok(nodes), pos);
-        } else {
-            let mut count = amount - 1;
-            let mut pos = 0;
-            while count > 0 {
-                let next_comma = match self.find_first_token_skip_brackets(&token::Token::Punctuation(token::Punctuation::Comma), &tokens[pos..]) {
-                    Ok(pos) => pos,
-                    Err(e) => return (Err(e), pos)
-                };
-                if next_comma.is_some() {
-                    count -= 1;
-                } else {
-                    return (Err(ParseError::InvalidExpression), pos);
-                }
-                let (node, new_pos) = parse_expr(self, &tokens[pos..next_comma.unwrap()+pos]);
-                match node {
-                    Ok(node) => nodes.push(node),
-                    Err(e) => return (Err(e), new_pos)
-                }
-                pos += next_comma.unwrap() + 1;
+
+            if next_comma.is_none() {
+                tuple.push(tokens[cursor..].to_vec());
+                break;
             }
-            let (node, new_pos) = parse_expr(self, &tokens[pos..]);
-            match node {
-                Ok(node) => nodes.push(node),
-                Err(e) => return (Err(e), new_pos + pos)
-            }
-            return (Ok(nodes), new_pos + pos);
+
+            tuple.push(tokens[cursor..next_comma.unwrap()+cursor].to_vec());
+            cursor += next_comma.unwrap() + 1;
         }
 
+        match tuple.len() {
+            0 => {
+                return Ok(Tuple::Empty);
+            }
+            1 => {
+                return Ok(Tuple::Element(tuple[0].to_vec()));
+            }
+            _ => {
+                let mut out_tuple = vec![];
+                for t in tuple.iter() {
+                    if t.len() >= 2 && t.first().unwrap() == &token::Token::Bracket(token::Bracket::OpenParen) && t.last().unwrap() == &token::Token::Bracket(token::Bracket::CloseParen) {
+                        out_tuple.push(self.make_tuple(&t[1..t.len()-1])?);
+                    } else {
+                        out_tuple.push(Tuple::Element(t.to_vec()));
+                    }
+                }
+                return Ok(Tuple::List(out_tuple));
+            }
+        }
     }
+
+    pub fn make_left_matching_tuple<T: Clonable>(&mut self, tokens: &[token::Token], structure: Tuple<T>) -> (Result<Tuple<Vec<token::Token>>, Error>, usize) {
+        let expr_lim = self.find_expr_possible_boundary(&tokens, false, false);
+        let tokens = if expr_lim >= tokens.len() {
+            &tokens
+        } else {
+            &tokens[..expr_lim]
+        };
+
+        let tuple = match self.make_tuple(&tokens) {
+            Ok(tuple) => tuple,
+            Err(e) => return (Err(e), expr_lim+1)
+        };
+        if !structure.matches_left_structure(&tuple) {
+            return (Err(Error::TupleError(TupleError::CannotPairUp)), expr_lim+1);
+        }
+        (Ok(tuple), expr_lim+1)
+    }
+
 }

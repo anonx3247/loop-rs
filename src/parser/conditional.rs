@@ -1,15 +1,16 @@
 use crate::{ast::block::{Conditional, ElifBlock, ElseBlock, IfBlock}, lexer::{token}};
 use super::parser::{Parser, ParseError};
+use crate::Error;
 
 
 
 impl Parser {
 
-    pub fn parse_conditional_expr(&mut self, tokens: &[token::Token]) -> (Result<Box<dyn Conditional>, ParseError>, usize) {
+    pub fn parse_conditional_expr(&mut self, tokens: &[token::Token]) -> (Result<Box<dyn Conditional>, Error>, usize) {
         match &tokens[0] {
             token::Token::Conditional(c) => {
                 if let token::Conditional::Match = c {
-                    return (Err(ParseError::Unimplimented), 0)
+                    return (Err(Error::ParserError(ParseError::Unimplimented)), 0)
                 }
                 let ((content, condition), matching_loc) = match self.parse_block_expr(tokens, match c {
                     token::Conditional::Else => None,
@@ -42,14 +43,14 @@ impl Parser {
                     token::Conditional::If => {
                         let condition = match condition {
                             Some(c) => c,
-                            _ => return (Err(ParseError::NoConditionForConditional), 0)
+                            _ => return (Err(Error::ParserError(ParseError::NoConditionForConditional)), 0)
                         };
                         (Ok(Box::new(IfBlock::new(condition, content.children(), next))), new_pos)
                     },
                     token::Conditional::Elif => {
                         let condition = match condition {
                             Some(c) => c,
-                            _ => return (Err(ParseError::NoConditionForConditional), 0)
+                            _ => return (Err(Error::ParserError(ParseError::NoConditionForConditional)), 0)
                         };
                         (Ok(Box::new(ElifBlock::new(condition, content.children(), next))), new_pos)
                     },
@@ -57,12 +58,12 @@ impl Parser {
                         (Ok(Box::new(ElseBlock::new(content.children()))), new_pos)
                     },
                     token::Conditional::Match => 
-                        (Err(ParseError::Unimplimented), new_pos)
+                        (Err(Error::ParserError(ParseError::Unimplimented)), new_pos)
                 }
             },
             _ => {
                 println!("no conditional found: {:?}", tokens[0]);
-                (Err(ParseError::NoConditionalFound), 0)
+                (Err(Error::ParserError(ParseError::NoConditionalFound)), 0)
             }
 
         }

@@ -1,13 +1,28 @@
-use crate::lexer::token;
+use crate::{ast::tuple::TupleASTNode, lexer::token};
 use crate::ast::*;
-use super::parser::{Parser, ParseError};
+use super::parser::Parser;
+use crate::Error;
 
 impl Parser {
-    pub fn parse_expr(&mut self, tokens: &[token::Token]) -> (Result<Box<dyn ast::ASTNode>, ParseError>, usize) {
+    pub fn parse_expr(&mut self, tokens: &[token::Token]) -> (Result<Box<dyn ast::ASTNode>, Error>, usize) {
         if !tokens.is_empty() && tokens[0] == token::Token::Bracket(token::Bracket::OpenParen) {
             if let Ok(pos) = self.find_matching_bracket(&tokens, 0) {
                 if pos == tokens.len() - 1 {
-                    return (self.parse_expr(&tokens[1..tokens.len()-1]).0, tokens.len());
+                    if self.is_tuple_expr(&tokens[1..tokens.len()-1]) {
+                        let tuple = match self.make_tuple(&tokens[1..tokens.len()-1]) {
+                            Ok(t) => t,
+                            Err(e) => return (Err(e), tokens.len())
+                        };
+
+                        let tuple = match self.parse_tuple(tuple, |s, tok| s.parse_expr(tok).0) {
+                            Ok(t) => t,
+                            Err(e) => return (Err(e), tokens.len())
+                        };
+
+                        return (Ok(TupleASTNode::from_tuple(tuple)), tokens.len());
+                    } else {
+                        return (self.parse_expr(&tokens[1..tokens.len()-1]).0, tokens.len());
+                    }
                 }
             }
         }
@@ -15,16 +30,14 @@ impl Parser {
         if tokens.len() == 1 {
             match tokens[0] {
                 token::Token::Identifier(_) => {
-                    let identifier = identifier::Identifier::from_token(tokens[0].clone())
-                        .map_err(|e| ParseError::Error(e.to_string()));
+                    let identifier = identifier::Identifier::from_token(tokens[0].clone());
                     return (match identifier {
                         Ok(identifier) => Ok(Box::new(identifier)),
                         Err(e) => Err(e),
                     }, 1);
                 }
                 _ => {
-                    let literal = literal::Literal::from_token(tokens[0].clone())
-                        .map_err(|e| ParseError::Error(e.to_string()));
+                    let literal = literal::Literal::from_token(tokens[0].clone());
                     return (match literal {
                         Ok(literal) => Ok(Box::new(literal)),
                         Err(e) => Err(e),
@@ -92,17 +105,31 @@ impl Parser {
 
         for op in decl_tokens.iter() {
             if let Ok(Some(_)) = self.find_first_token_skip_brackets(&op, &tokens) {
-                let (n, i) = self.parse_assignment_or_declaration_expr(&tokens);
-                let n = match n  {
-                    Ok(n) => Box::new(MultiExpression::new(n)),
+                let (node, i) = self.parse_assignment_or_declaration_expr(&tokens);
+                let node = match node  {
+                    Ok(n) => n,
                     Err(e) => return (Err(e), i + offset),
                 };
-                return (Ok(n), i + offset);
+                return (Ok(node), i + offset);
             }
         }
 
         let max_expr_length= self.find_expr_possible_boundary(&tokens, false, false);
         let tokens = &tokens[..max_expr_length];
+
+        if self.is_tuple_expr(tokens) {
+            let tuple = match self.make_tuple(tokens) {
+                Ok(t) => t,
+                Err(e) => return (Err(e), max_expr_length)
+            };
+
+            let tuple = match self.parse_tuple(tuple, |s, tok| s.parse_expr(tok).0) {
+                Ok(t) => t,
+                Err(e) => return (Err(e), max_expr_length)
+            };
+
+            return (Ok(TupleASTNode::from_tuple(tuple)), max_expr_length)
+        }
 
 
         for op in conditional_tokens.iter() {

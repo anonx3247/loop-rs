@@ -1,3 +1,5 @@
+use crate::ast::tuple::{Clonable, Tuple, TupleLike};
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Int(i64),
@@ -27,6 +29,33 @@ impl std::fmt::Display for Value {
                 write!(f, "({})", result)
             }
             Value::Error(e) => write!(f, "error({})", e),
+        }
+    }
+}
+
+impl Clonable for Value {
+    fn clone_element(&self) -> Self {
+        self.clone()
+    }
+}
+
+impl TupleLike<Value> for Value {
+    fn to_tuple(&self) -> Tuple<Value> {
+        match self {
+            Value::Tuple(values) => {
+                let mut tuple_values = Vec::new();
+                for value in values {
+                    tuple_values.push(value.to_tuple());
+                }
+                if tuple_values.len() == 0 {
+                    Tuple::Empty
+                } else if tuple_values.len() == 1 {
+                    tuple_values[0].clone()
+                } else {
+                    Tuple::List(tuple_values)
+                }
+            },
+            _ => Tuple::Element(self.clone()),
         }
     }
 }

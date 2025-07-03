@@ -18,7 +18,7 @@ pub fn run_file(path: &Path) {
                     for child in ast.children() {
                         match child.eval(&mut env) {
                             Ok(value) => println!("{}", value.to_string()),
-                            Err(e) => eprintln!("Error: {}", e),
+                            Err(e) => eprintln!("Error: {:?}", e),
                         }
                     }
                 }
@@ -28,7 +28,7 @@ pub fn run_file(path: &Path) {
             }
         }
         Err(e) => {
-            eprintln!("Error: {}", e);
+            eprintln!("Error: {:?}", e);
         }
     }
 } 

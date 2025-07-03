@@ -1,13 +1,14 @@
-use crate::lexer::token;
+use crate::{lexer::token};
 use crate::ast::*;
 use super::parser::{Parser, ParseError};
+use crate::Error;
 
 impl Parser {
     pub fn parse_binary_operator_expr(&mut self, tokens: &[token::Token], 
         operators: &[token::Token], 
-        left_parser: Option<fn(&mut Self, &[token::Token]) -> (Result<Box<dyn ast::ASTNode>, ParseError>, usize)>, 
-        right_parser: Option<fn(&mut Self, &[token::Token]) -> (Result<Box<dyn ast::ASTNode>, ParseError>, usize)>
-        ) -> (Result<Box<dyn ast::ASTNode>, ParseError>, usize) {
+        left_parser: Option<fn(&mut Self, &[token::Token]) -> (Result<Box<dyn ast::ASTNode>, Error>, usize)>, 
+        right_parser: Option<fn(&mut Self, &[token::Token]) -> (Result<Box<dyn ast::ASTNode>, Error>, usize)>
+        ) -> (Result<Box<dyn ast::ASTNode>, Error>, usize) {
         
         for op in operators.iter() {
             if let Ok(Some(pos)) = self.find_first_token_skip_brackets(&op, &tokens) {
@@ -30,7 +31,7 @@ impl Parser {
                     },
                     operator: match op {
                         token::Token::Operator(op) => op.clone(),
-                        _ => return (Err(ParseError::InvalidOperator), pos)
+                        _ => return (Err(Error::ParserError(ParseError::UnexpectedToken(op.clone()))), pos)
                     },
                 };
                 return (Ok(Box::new(node)), right_pos + pos + 1);
@@ -39,16 +40,14 @@ impl Parser {
 
         match tokens[0] {
             token::Token::Identifier(_) => {
-                let identifier = identifier::Identifier::from_token(tokens[0].clone())
-                    .map_err(|e| ParseError::Error(e.to_string()));
+                let identifier = identifier::Identifier::from_token(tokens[0].clone());
                 return (match identifier {
                     Ok(identifier) => Ok(Box::new(identifier)),
                     Err(e) => Err(e),
                 }, 1);
             }
             _ => {
-                let literal = literal::Literal::from_token(tokens[0].clone())
-                    .map_err(|e| ParseError::Error(e.to_string()));
+                let literal = literal::Literal::from_token(tokens[0].clone());
                 return (match literal {
                     Ok(literal) => Ok(Box::new(literal)),
                     Err(e) => Err(e),
@@ -58,7 +57,7 @@ impl Parser {
         
     }
 
-    pub fn parse_math_expr(&mut self, tokens: &[token::Token]) -> (Result<Box<dyn ast::ASTNode>, ParseError>, usize) {
+    pub fn parse_math_expr(&mut self, tokens: &[token::Token]) -> (Result<Box<dyn ast::ASTNode>, Error>, usize) {
         let operators = [
             token::Token::Operator(token::Operator::Sub),
             token::Token::Operator(token::Operator::Add),
@@ -76,7 +75,7 @@ impl Parser {
         self.parse_binary_operator_expr(tokens, &operators, None, None)
     }
 
-    pub fn parse_bool_expr(&mut self, tokens: &[token::Token]) -> (Result<Box<dyn ast::ASTNode>, ParseError>, usize) {
+    pub fn parse_bool_expr(&mut self, tokens: &[token::Token]) -> (Result<Box<dyn ast::ASTNode>, Error>, usize) {
         let operators = [
             token::Token::Operator(token::Operator::And),
             token::Token::Operator(token::Operator::Or),

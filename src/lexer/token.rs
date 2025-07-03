@@ -1,3 +1,5 @@
+use crate::ast::tuple::Clonable;
+
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum Token {
     Literal(Literal),
@@ -26,6 +28,18 @@ pub enum Literal {
     Bool(bool),
     Char(char),
     None,
+}
+
+impl Clonable for Token {
+    fn clone_element(&self) -> Token {
+        self.clone()
+    }
+}
+
+impl<T: Clonable> Clonable for Vec<T> {
+    fn clone_element(&self) -> Vec<T> {
+        return self.iter().map(|t| t.clone_element()).collect();
+    }
 }
 
 

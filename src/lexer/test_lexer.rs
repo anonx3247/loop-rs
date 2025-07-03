@@ -93,7 +93,7 @@ mod test_lexer {
     #[test]
     fn test_tokenize_file() {
         let mut lexer = Lexer::new(std::fs::read_to_string("basic_tokenizer_test.lp").unwrap());
-        assert!(lexer.tokenize().is_ok(), "{}", lexer.tokenize().err().unwrap());
+        assert!(lexer.tokenize().is_ok(), "{:?}", lexer.tokenize().err().unwrap());
         assert!(!lexer.tokens.is_empty());
     }
 }

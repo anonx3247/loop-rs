@@ -1,5 +1,8 @@
-use crate::ast::{ASTNode,Value, Error};
+use crate::ast::{ASTNode,Value};
 use crate::environment::environment::Environment;
+use crate::Error;
+
+#[derive(Debug)]
 pub struct Loop {
     pub content: Vec<Box<dyn ASTNode>>
 }
@@ -37,11 +40,13 @@ impl ASTNode for Loop {
     }
 }
 
+#[derive(Debug)]
 pub struct For {
     pub range_expr: Box<dyn ASTNode>,
     pub content: Vec<Box<dyn ASTNode>>
 }
 
+#[derive(Debug)]
 pub struct While {
     pub condition: Box<dyn ASTNode>,
     pub content: Vec<Box<dyn ASTNode>>

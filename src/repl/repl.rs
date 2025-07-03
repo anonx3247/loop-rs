@@ -56,7 +56,7 @@ impl Highlighter for LoopHighlighter {
     }
 }
 
-pub fn repl() {
+pub fn repl(print_ast: bool, print_tokens: bool) {
     let mut keybindings = default_emacs_keybindings();
     keybindings.add_binding(
         KeyModifiers::SHIFT,
@@ -85,18 +85,32 @@ pub fn repl() {
                 if buffer.trim() == "exit" {
                     println!("Exiting...");
                     break;
+                } else if buffer.trim().starts_with("#type") {
+                    let identifier = buffer.trim().split_whitespace().nth(1).unwrap();
+                    let type_ = env.get_type(identifier);
+                    match type_ {
+                        Ok(type_) => println!("{:?}", type_),
+                        Err(e) => eprintln!("{} {:?}", "Error:".red(), e),
+                    }
+                    continue;
                 }
                 
-                let mut lexer = Lexer::new(buffer);
+                let mut lexer = Lexer::new(buffer.clone());
                 match lexer.tokenize() {
                     Ok(_) => {
                         lexer.clean_tokens();
+                        if print_tokens {
+                            println!("Tokens: {:?}", lexer.tokens);
+                        }
                         let mut parser = Parser::new(lexer.tokens.clone());
                         match parser.parse() {
                             Ok(ast) => {
+                                if print_ast {
+                                    println!("{}", ast.to_string());
+                                }
                                 match ast.eval(&mut env) {
                                     Ok(value) => println!("{}", value.to_string().green()),
-                                    Err(e) => eprintln!("{} {}", "Error:".red(), e),
+                                    Err(e) => eprintln!("{} {:?}", "Error:".red(), e),
                                 }
                             }
                             Err(e) => {
@@ -105,7 +119,7 @@ pub fn repl() {
                         }
                     }
                     Err(e) => {
-                        eprintln!("{} {}", "Error:".red(), e);
+                        eprintln!("{} {:?}", "Error:".red(), e);
                     }
                 }
             }
@@ -114,7 +128,7 @@ pub fn repl() {
                 break;
             }
             Err(err) => {
-                eprintln!("{} {}", "Error:".red(), err);
+                eprintln!("{} {:?}", "Error:".red(), err);
                 break;
             }
         }
