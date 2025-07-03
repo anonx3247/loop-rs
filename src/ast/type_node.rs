@@ -35,6 +35,16 @@ impl Clonable for Type {
 }
 
 impl Type {
+
+    pub fn is_basic(&self) -> bool {
+        match self {
+            Type::Generic(_) | Type::UserDefined(_) => false,
+            Type::Option(t) => t.is_basic(),
+            Type::Tuple(types) => types.iter().all(|t| t.is_basic()),
+            _ => true,
+        }
+    }
+
     pub fn from_token_type(token: token::Type) -> Self {
         match token {
             token::Type::U8 => Type::U8,

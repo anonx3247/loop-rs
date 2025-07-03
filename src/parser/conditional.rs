@@ -1,4 +1,4 @@
-use crate::{ast::block::{Conditional, ElifBlock, ElseBlock, IfBlock}, lexer::{token}};
+use crate::{ast::{conditional::{Conditional, ElifBlock, ElseBlock, IfBlock}, scope::Scope}, lexer::{token}};
 use super::parser::{Parser, ParseError};
 use crate::Error;
 
@@ -45,17 +45,17 @@ impl Parser {
                             Some(c) => c,
                             _ => return (Err(Error::ParserError(ParseError::NoConditionForConditional)), 0)
                         };
-                        (Ok(Box::new(IfBlock::new(condition, content.children(), next))), new_pos)
+                        (Ok(Box::new(IfBlock::new(condition, Scope::new(content.children()), next))), new_pos)
                     },
                     token::Conditional::Elif => {
                         let condition = match condition {
                             Some(c) => c,
                             _ => return (Err(Error::ParserError(ParseError::NoConditionForConditional)), 0)
                         };
-                        (Ok(Box::new(ElifBlock::new(condition, content.children(), next))), new_pos)
+                        (Ok(Box::new(ElifBlock::new(condition, Scope::new(content.children()), next))), new_pos)
                     },
                     token::Conditional::Else => {
-                        (Ok(Box::new(ElseBlock::new(content.children()))), new_pos)
+                        (Ok(Box::new(ElseBlock::new(Scope::new(content.children())))), new_pos)
                     },
                     token::Conditional::Match => 
                         (Err(Error::ParserError(ParseError::Unimplimented)), new_pos)

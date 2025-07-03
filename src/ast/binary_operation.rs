@@ -92,6 +92,28 @@ impl ASTNode for BinaryOperation {
                         _ => return Err(Error::RuntimeError(RuntimeError::BinaryOperationError(BinaryOperationError::CannotPerform(self.operator.clone(), left, right)))),
                     }
                 }
+                (Value::Tuple(l), Value::Tuple(r)) => {
+                    if l.len() != r.len() {
+                        return Err(Error::RuntimeError(RuntimeError::BinaryOperationError(BinaryOperationError::CannotPerform(self.operator.clone(), left, right))));
+                    }
+                    match self.operator {
+                        Operator::Eq => {
+                            let mut result = true;
+                            for (a, b) in l.iter().zip(r.iter()) {
+                                result = result && a == b;
+                            }
+                            Value::Bool(result)
+                        }
+                        Operator::Neq => {
+                            let mut result = false;
+                            for (a, b) in l.iter().zip(r.iter()) {
+                                result = result || a != b;
+                            }
+                            Value::Bool(result)
+                        }
+                        _ => return Err(Error::RuntimeError(RuntimeError::BinaryOperationError(BinaryOperationError::CannotPerform(self.operator.clone(), left, right)))),
+                    }
+                }
                 _ => return Err(Error::RuntimeError(RuntimeError::BinaryOperationError(BinaryOperationError::CannotPerform(self.operator.clone(), left, right)))),
             })
     }

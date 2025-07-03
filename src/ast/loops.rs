@@ -1,15 +1,15 @@
-use crate::ast::{ASTNode,Value};
+use crate::ast::{ASTNode,Value, scope::Scope};
 use crate::environment::environment::Environment;
 use crate::Error;
 
 #[derive(Debug)]
 pub struct Loop {
-    pub content: Vec<Box<dyn ASTNode>>
+    pub content: Scope
 }
 
 
 impl Loop {
-    pub fn new(content: Vec<Box<dyn ASTNode>>) -> Self {
+    pub fn new(content: Scope) -> Self {
         Self { content }
     }
 }
@@ -20,22 +20,16 @@ impl ASTNode for Loop {
     }
 
     fn children(&self) -> Vec<Box<dyn ASTNode>> {
-        self.content.iter().map(
-            |c| c.as_ref().clone_to_node()
-        ).collect()
+        self.content.children()
     }
 
     fn clone_to_node(&self) -> Box<dyn ASTNode> {
-        Box::new(Loop::new(self.content.iter().map(
-        |c| c.as_ref().clone_to_node()
-        ).collect()))
+        Box::new(Loop::new(self.content.clone()))
     }
 
     fn eval(&self, env: &mut Environment) -> Result<Value, Error> {
         loop {
-            for child in self.content.iter() {
-                child.eval(env)?;
-            }
+            self.content.eval(env, true)?;
         }
     }
 }
@@ -43,17 +37,17 @@ impl ASTNode for Loop {
 #[derive(Debug)]
 pub struct For {
     pub range_expr: Box<dyn ASTNode>,
-    pub content: Vec<Box<dyn ASTNode>>
+    pub content: Scope
 }
 
 #[derive(Debug)]
 pub struct While {
     pub condition: Box<dyn ASTNode>,
-    pub content: Vec<Box<dyn ASTNode>>
+    pub content: Scope
 }
 
 impl For {
-    pub fn new(range_expr: Box<dyn ASTNode>, content: Vec<Box<dyn ASTNode>>) -> Self {
+    pub fn new(range_expr: Box<dyn ASTNode>, content: Scope) -> Self {
         Self { range_expr, content }
     }
 }
@@ -64,20 +58,16 @@ impl ASTNode for For {
     }
 
     fn children(&self) -> Vec<Box<dyn ASTNode>> {
-        self.content.iter().map(
-            |c| c.as_ref().clone_to_node()
-        ).collect()
+        self.content.children()
     }
 
     fn clone_to_node(&self) -> Box<dyn ASTNode> {
-        Box::new(For::new(self.range_expr.clone_to_node(), self.content.iter().map(
-            |c| c.as_ref().clone_to_node())
-            .collect()))
+        Box::new(For::new(self.range_expr.clone_to_node(), self.content.clone()))
     }
 }
 
 impl While {
-    pub fn new(condition: Box<dyn ASTNode>, content: Vec<Box<dyn ASTNode>>) -> Self {
+    pub fn new(condition: Box<dyn ASTNode>, content: Scope) -> Self {
         Self { condition, content }
     }
 }
@@ -88,24 +78,18 @@ impl ASTNode for While {
     }
 
     fn children(&self) -> Vec<Box<dyn ASTNode>> {
-        self.content.iter().map(
-            |c| c.as_ref().clone_to_node()
-        ).collect()
+        self.content.children()
     }
 
     fn clone_to_node(&self) -> Box<dyn ASTNode> {
-        Box::new(While::new(self.condition.clone_to_node(), self.content.iter().map(
-            |c| c.as_ref().clone_to_node())
-            .collect()))
+        Box::new(While::new(self.condition.clone_to_node(), self.content.clone()))
     }
 
     fn eval(&self, env: &mut Environment) -> Result<Value, Error> {
         let mut current_value = self.condition.eval(env)?;
         let mut result = Value::None;
         while current_value == Value::Bool(true) {
-            for child in self.content.iter() {
-                result = child.eval(env)?;
-            }
+            result = self.content.eval(env, true)?;
             current_value = self.condition.eval(env)?;
         }
         Ok(result)

@@ -1,4 +1,4 @@
-use crate::{ast::ASTNode, ast::loops::{Loop, For, While}, lexer::{token}};
+use crate::{ast::{ASTNode, scope::Scope}, ast::loops::{Loop, For, While}, lexer::{token}};
 use super::parser::{Parser, ParseError};
 use crate::Error;
 
@@ -22,9 +22,9 @@ impl Parser {
 
 
             let output: Result<Box<dyn ASTNode>, Error> = match tokens[0] {
-                token::Token::Loop(token::Loop::For) => Ok(Box::new(For::new(expr.unwrap(), content.children()))),
-                token::Token::Loop(token::Loop::While) => Ok(Box::new(While::new(expr.unwrap(), content.children()))),
-                token::Token::Loop(token::Loop::Loop) => Ok(Box::new(Loop::new(content.children()))),
+                token::Token::Loop(token::Loop::For) => Ok(Box::new(For::new(expr.unwrap(), Scope::new(content.children())))),
+                token::Token::Loop(token::Loop::While) => Ok(Box::new(While::new(expr.unwrap(), Scope::new(content.children())))),
+                token::Token::Loop(token::Loop::Loop) => Ok(Box::new(Loop::new(Scope::new(content.children())))),
                 _ => Err(Error::ParserError(ParseError::NoLoopFound))
             };
 

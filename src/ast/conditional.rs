@@ -1,16 +1,16 @@
-use crate::ast::{ASTNode,Value};
+use crate::ast::{ASTNode,Value, scope::Scope};
 use crate::Error;
 use crate::environment::environment::Environment;
 
 #[derive(Debug)]
 pub struct IfBlock {
     pub condition: Box<dyn ASTNode>,
-    pub content: Vec<Box<dyn ASTNode>>,
+    pub content: Scope,
     pub next_conditional: Option<Box<dyn Conditional>>,
 }
 
 impl IfBlock {
-    pub fn new(condition: Box<dyn ASTNode>, content: Vec<Box<dyn ASTNode>>, next_conditional: Option<Box<dyn Conditional>>) -> Self {
+    pub fn new(condition: Box<dyn ASTNode>, content: Scope, next_conditional: Option<Box<dyn Conditional>>) -> Self {
         Self { condition, content, next_conditional }
     }
 }
@@ -19,7 +19,7 @@ pub trait Conditional: ASTNode {
     fn condition(&self, env: &mut Environment) -> Result<Value, Error>;
     fn next_conditional(&self) -> Option<Box<dyn Conditional>>;
     fn clone_conditional(&self) -> Box<dyn Conditional>;
-    fn content(&self) -> Vec<Box<dyn ASTNode>>;
+    fn content(&self) -> Scope;
 
     fn evaluate_conditional(&self, env: &mut Environment) -> Result<Option<Value>, Error> {
         let mut current_conditional: Option<Box<dyn Conditional>> = Some(self.clone_conditional());
@@ -27,9 +27,7 @@ pub trait Conditional: ASTNode {
             match conditional.condition(env) {
                 Ok(Value::Bool(true)) => {
                     let mut result = Value::None;
-                    for child in conditional.content() {
-                        result = child.eval(env)?;
-                    }
+                    result = conditional.content().eval(env, true)?;
                     return Ok(Some(result));
                 }
                 Err(e) => {
@@ -53,14 +51,12 @@ impl Conditional for IfBlock {
     }
 
     fn clone_conditional(&self) -> Box<dyn Conditional> {
-        let content = self.content.iter().map(|c| c.as_ref().clone_to_node()).collect();
+        let content = self.content.clone();
         Box::new(IfBlock::new(self.condition.clone_to_node(), content, self.next_conditional.as_ref().map(|c| c.clone_conditional())))
     }
 
-    fn content(&self) -> Vec<Box<dyn ASTNode>> {
-        self.content.iter()
-            .map(|c| c.as_ref().clone_to_node())
-            .collect::<Vec<Box<dyn ASTNode>>>()
+    fn content(&self) -> Scope {
+        self.content.clone()
     }
 }
 
@@ -70,9 +66,7 @@ impl ASTNode for IfBlock {
     }
 
     fn children(&self) -> Vec<Box<dyn ASTNode>> {
-        self.content.iter()
-            .map(|c| c.as_ref().clone_to_node())
-            .collect::<Vec<Box<dyn ASTNode>>>()
+        self.content.children()
     }
 
     fn eval(&self, env: &mut Environment) -> Result<Value, Error> {
@@ -83,7 +77,7 @@ impl ASTNode for IfBlock {
         }
     }
     fn clone_to_node(&self) -> Box<dyn ASTNode> {
-        let content = self.content.iter().map(|c| c.as_ref().clone_to_node()).collect();
+        let content = self.content.clone();
         Box::new(IfBlock::new(self.condition.clone_to_node(), content, self.next_conditional.as_ref().map(|c| c.clone_conditional())))
     }
 
@@ -98,7 +92,7 @@ impl ASTNode for IfBlock {
         result.push_str(&self.condition.print_tree(indent+1));
         result.push_str(&"|   ".repeat(indent));
         result.push_str("|-content: \n");
-        for child in self.content.iter() {
+        for child in self.content.children().iter() {
             result.push_str(&child.print_tree(indent+1));
         }
         if let Some(cond) = self.next_conditional() {
@@ -110,11 +104,11 @@ impl ASTNode for IfBlock {
 
 #[derive(Debug)]
 pub struct ElseBlock {
-    pub content: Vec<Box<dyn ASTNode>>,
+    pub content: Scope,
 }
 
 impl ElseBlock {
-    pub fn new(content: Vec<Box<dyn ASTNode>>) -> Self {
+    pub fn new(content: Scope) -> Self {
         Self { content }
     }
 }
@@ -129,14 +123,12 @@ impl Conditional for ElseBlock {
     }
 
     fn clone_conditional(&self) -> Box<dyn Conditional> {
-        let content = self.content.iter().map(|c| c.as_ref().clone_to_node()).collect();
+        let content = self.content.clone();
         Box::new(ElseBlock::new(content))
     }
 
-    fn content(&self) -> Vec<Box<dyn ASTNode>> {
-        self.content.iter()
-            .map(|c| c.as_ref().clone_to_node())
-            .collect::<Vec<Box<dyn ASTNode>>>()
+    fn content(&self) -> Scope {
+        self.content.clone()
     }
 }
 
@@ -146,23 +138,21 @@ impl ASTNode for ElseBlock {
     }
 
     fn children(&self) -> Vec<Box<dyn ASTNode>> {
-        self.content.iter()
-            .map(|c| c.as_ref().clone_to_node())
-            .collect::<Vec<Box<dyn ASTNode>>>()
+        self.content.children()
     }
 
     fn eval(&self, env: &mut Environment) -> Result<Value, Error> {
         match self.evaluate_conditional(env) {
             Ok(value) => match value {
                 Some(value) => Ok(value),
-                _ => self.content.last().unwrap().eval(env),
+                _ => self.content.eval(env, true),
             },
             Err(e) => Err(e),
         }
     }
 
     fn clone_to_node(&self) -> Box<dyn ASTNode> {
-        let content = self.content.iter().map(|c| c.as_ref().clone_to_node()).collect();
+        let content = self.content.clone();
         Box::new(ElseBlock::new(content))
     }
 
@@ -174,7 +164,7 @@ impl ASTNode for ElseBlock {
         result.push('\n');
         result.push_str(&"|   ".repeat(indent));
         result.push_str("|-content: \n");
-        for child in self.content.iter() {
+        for child in self.content.children().iter() {
             result.push_str(&child.print_tree(indent+1));
         }
         result
@@ -184,12 +174,12 @@ impl ASTNode for ElseBlock {
 #[derive(Debug)]
 pub struct ElifBlock {
     pub condition: Box<dyn ASTNode>,
-    pub content: Vec<Box<dyn ASTNode>>,
+    pub content: Scope,
     pub next_conditional: Option<Box<dyn Conditional>>,
 }
 
 impl ElifBlock {
-    pub fn new(condition: Box<dyn ASTNode>, content: Vec<Box<dyn ASTNode>>, next_conditional: Option<Box<dyn Conditional>>) -> Self {
+    pub fn new(condition: Box<dyn ASTNode>, content: Scope, next_conditional: Option<Box<dyn Conditional>>) -> Self {
         Self { condition, content, next_conditional }
     }
 }
@@ -204,14 +194,12 @@ impl Conditional for ElifBlock {
     }
 
     fn clone_conditional(&self) -> Box<dyn Conditional> {
-        let content = self.content.iter().map(|c| c.as_ref().clone_to_node()).collect();
+        let content = self.content.clone();
         Box::new(ElifBlock::new(self.condition.clone_to_node(), content, self.next_conditional.as_ref().map(|c| c.clone_conditional())))
     }
 
-    fn content(&self) -> Vec<Box<dyn ASTNode>> {
-        self.content.iter()
-            .map(|c| c.as_ref().clone_to_node())
-            .collect::<Vec<Box<dyn ASTNode>>>()
+    fn content(&self) -> Scope {
+        self.content.clone()
     }
 }
 
@@ -221,9 +209,7 @@ impl ASTNode for ElifBlock {
     }
 
     fn children(&self) -> Vec<Box<dyn ASTNode>> {
-        self.content.iter()
-            .map(|c| c.as_ref().clone_to_node())
-            .collect::<Vec<Box<dyn ASTNode>>>()
+        self.content.children()
     }
 
     fn eval(&self, env: &mut Environment) -> Result<Value, Error> {
@@ -245,7 +231,7 @@ impl ASTNode for ElifBlock {
         result.push_str(&self.condition.print_tree(indent+1));
         result.push_str(&"|   ".repeat(indent));
         result.push_str("|-content: \n");
-        for child in self.content.iter() {
+        for child in self.content.children().iter() {
             result.push_str(&child.print_tree(indent+1));
         }
         if let Some(cond) = self.next_conditional() {
@@ -255,7 +241,7 @@ impl ASTNode for ElifBlock {
     }
 
     fn clone_to_node(&self) -> Box<dyn ASTNode> {
-        let content = self.content.iter().map(|c| c.as_ref().clone_to_node()).collect();
+        let content = self.content.clone();
         Box::new(ElifBlock::new(self.condition.clone_to_node(), content, self.next_conditional.as_ref().map(|c| c.clone_conditional())))
     }
 }

@@ -1,7 +1,10 @@
 use crate::lexer::Lexer;
 use crate::parser::parser::*;
 use crate::environment::environment::Environment;
-use colored::Colorize;
+use crate::environment::heap::Heap;
+use std::rc::Rc;
+use std::cell::RefCell;
+    use colored::Colorize;
 use reedline::{
     default_emacs_keybindings, Emacs, KeyCode, KeyModifiers, Reedline, Signal, DefaultPrompt, ReedlineEvent, Highlighter, StyledText,
 };
@@ -71,7 +74,9 @@ pub fn repl(print_ast: bool, print_tokens: bool) {
         .with_edit_mode(edit_mode);
 
     let prompt = DefaultPrompt::default();
-    let mut env = Environment::new();
+    let heap = Heap::new();
+    let heap_rc = Rc::new(RefCell::new(heap));
+    let mut env = Environment::new(None, Some(heap_rc.clone()));
 
     loop {
         let sig = line_editor.read_line(&prompt);
@@ -92,6 +97,9 @@ pub fn repl(print_ast: bool, print_tokens: bool) {
                         Ok(type_) => println!("{:?}", type_),
                         Err(e) => eprintln!("{} {:?}", "Error:".red(), e),
                     }
+                    continue;
+                } else if buffer.trim().starts_with("#heap") {
+                    heap_rc.borrow().print();
                     continue;
                 }
                 
