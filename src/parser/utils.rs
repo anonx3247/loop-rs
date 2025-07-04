@@ -20,6 +20,13 @@ impl Parser {
         Ok(None)
     }
 
+    pub fn check_bounds(&mut self, tokens: &[token::Token], loc: usize) -> Result<(), Error> {
+        if loc >= tokens.len() {
+            return Err(Error::ParserError(ParseError::UnexpectedEndOfInput));
+        }
+        Ok(())
+    }
+
     pub fn find_matching_bracket(&mut self, tokens: &[token::Token], loc: usize) -> Result<usize, Error> {
         let bracket_pairs = [
             (token::Token::Bracket(token::Bracket::OpenParen), token::Token::Bracket(token::Bracket::CloseParen)),
@@ -120,43 +127,105 @@ impl Parser {
         }
     }
 
-    pub fn find_expr_possible_boundary(&mut self, tokens: &[token::Token], assign_mode: bool, loop_mode: bool) -> usize {
+    pub fn find_expr_possible_boundary(&mut self, tokens: &[token::Token], assign_mode: bool, loop_mode: bool, fn_mode: bool) -> Result<usize, Error> {
         let is_type_expr = self.is_type_expr(tokens);
         let mut cursor = 0;
         while cursor < tokens.len() {
-            match tokens[cursor] {
+            match tokens[cursor].clone() {
                 token::Token::Loop(_) => if !loop_mode {
-                    return cursor;
+                    return Ok(cursor);
                 } else {
                     cursor += 1;
                 },
+                token::Token::Function(f) => {
+                    if !fn_mode {
+                        return Ok(cursor);
+                    } match f {
+                        token::Function::Fn => {
+                            cursor += 1;
+                            let mut complete = false;
+                            let mut passed_arrow = false;
+                            while !complete && cursor < tokens.len() {
+                                match tokens[cursor] {
+                                    token::Token::Identifier(_) => {
+                                        cursor += 1;
+                                    }
+                                    token::Token::Bracket(token::Bracket::OpenParen) => {
+                                        cursor = match self.find_matching_bracket(&tokens, cursor) {
+                                            Ok(new_pos) => new_pos + 1,
+                                            Err(_) => {
+                                                return Err(Error::ParserError(ParseError::NoMatchingBracket));
+                                            }
+                                        };
+                                        if passed_arrow {
+                                            complete = true;
+                                        }
+                                    }
+                                    token::Token::Function(token::Function::Arrow) => {
+                                        passed_arrow = true;
+                                        cursor += 1;
+                                    }
+                                    token::Token::Type(_) => {
+                                        if !passed_arrow {
+                                            return Err(Error::ParserError(ParseError::UnexpectedToken(tokens[cursor].clone())));
+                                        } else {
+                                            cursor += 1;
+                                            complete = true;
+                                        }
+                                    },
+                                    _ => {
+                                        complete = true;
+                                    }
+                                }
+                            }
+                            if cursor < tokens.len() && matches!(tokens[cursor], token::Token::Bracket(token::Bracket::OpenBrace)) {
+                                println!("cursor: {}", cursor);
+                                println!("tokens: {:?}", tokens);
+                                cursor = match self.find_matching_bracket(&tokens, cursor) {
+                                    Ok(new_pos) => new_pos + 1,
+                                    Err(_) => {
+                                        return Err(Error::ParserError(ParseError::NoMatchingBracket));
+                                    }
+                                };
+                                println!("new cursor: {}", cursor);
+                            } else {
+                                println!("no open brace");
+                                println!("cursor: {}", cursor);
+                                println!("tokens: {:?}", tokens);
+                            }
+                            return Ok(cursor);
+                        }
+                        _ => {
+                            return Ok(cursor); // for now
+                        }
+                    }
+                }
                 token::Token::TypeDeclaration(_)
-                | token::Token::Function(_)
                 | token::Token::Module(_)
                 | token::Token::Debug
                 => {
-                    return cursor
+                    return Ok(cursor);
                 },
                 token::Token::VariableDeclaration(_) => {
                     if !assign_mode {
-                        return cursor;
+                        return Ok(cursor);
                     } else {
                         cursor += 1;
                     }
                 }
                 token::Token::Type(_) => {
                     if !is_type_expr && !assign_mode {
-                        return cursor;
+                        return Ok(cursor);
                     } else if !assign_mode {
                         if cursor + 1 >= tokens.len() {
-                            return cursor+1;
+                            return Ok(cursor+1);
                         } else {
                             match tokens[cursor +1] {
                                 token::Token::Punctuation(token::Punctuation::Comma) | token::Token::Bracket(_) => {
                                     cursor += 1;
                                 },
                                 _ => {
-                                    return cursor+1;
+                                    return Ok(cursor+1);
                                 }
                             }
                         }
@@ -166,12 +235,12 @@ impl Parser {
                 }
                 token::Token::Whitespace(token::Whitespace::Newline) => {
                     if is_type_expr {
-                        return cursor;
+                        return Ok(cursor);
                     }
 
                     if cursor + 1 < tokens.len() {
                         if let token::Token::Whitespace(token::Whitespace::Newline) = tokens[cursor+1] {
-                            return cursor
+                            return Ok(cursor);
                         }
                     }
                     cursor += 1;
@@ -185,7 +254,7 @@ impl Parser {
                                 cursor += 1;
                             },
                             _ => {
-                                return cursor+1;
+                                return Ok(cursor+1);
                             }
                         },
                         _ => {
@@ -197,7 +266,7 @@ impl Parser {
                     cursor = match self.find_matching_bracket(&tokens, cursor) {
                         Ok(new_pos) => new_pos + 1,
                         Err(_) => {
-                            return cursor; // If we can't find a matching bracket, we stop here
+                            return Ok(cursor); // If we can't find a matching bracket, we stop here
                         }
                     }
                 },
@@ -209,7 +278,7 @@ impl Parser {
                 | token::Token::Operator(token::Operator::DivAssign)
                 | token::Token::Operator(token::Operator::ModAssign) => {
                     if !assign_mode {
-                        return cursor;
+                        return Ok(cursor);
                     } else {
                         cursor += 1;
                     }
@@ -219,6 +288,6 @@ impl Parser {
                 }
             }
         }
-        cursor
+        Ok(cursor)
     }
 } 

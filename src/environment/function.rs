@@ -12,7 +12,11 @@ impl Environment {
     pub fn declare_function(&mut self, declaration: FnDeclaration) -> Result<(), Error> {
         let index = self.heap.borrow_mut().allocate(Value::Fn(Box::new(declaration.body.clone())));
         let type_ = Type::FnType(Box::new(declaration.signature()));
-        self.local_variables.insert(declaration.name, Variable { initialized: true, index, mutable: false, type_ });
+        let name = match declaration.name {
+            Some(name) => name,
+            None => return Err(Error::RuntimeError(RuntimeError::CannotDeclareAnonymousFunction)),
+        };
+        self.local_variables.insert(name, Variable { initialized: true, index, mutable: false, type_ });
         Ok(())
     }
 

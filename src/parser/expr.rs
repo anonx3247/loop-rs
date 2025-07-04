@@ -5,6 +5,11 @@ use crate::Error;
 
 impl Parser {
     pub fn parse_expr(&mut self, tokens: &[token::Token]) -> (Result<Box<dyn ast::ASTNode>, Error>, usize) {
+
+        if tokens.is_empty() {
+            return (Ok(Box::new(EmptyASTNode::new())), 0);
+        }
+
         if !tokens.is_empty() && tokens[0] == token::Token::Bracket(token::Bracket::OpenParen) {
             if let Ok(pos) = self.find_matching_bracket(&tokens, 0) {
                 if pos == tokens.len() - 1 {
@@ -60,9 +65,15 @@ impl Parser {
             }
         }
 
-
-        let max_expr_length= self.find_expr_possible_boundary(&tokens, true, true);
-        let tokens = &tokens[..max_expr_length];
+        if let token::Token::Function(token::Function::Fn) = tokens[0] {
+            let max_expr_length= match self.find_expr_possible_boundary(&tokens, true, true, true) {
+                Ok(length) => length,
+                Err(e) => return (Err(e), offset)
+            };
+            let tokens = &tokens[..max_expr_length];
+            let (node, pos) = self.parse_fn_declaration(&tokens);
+            return (node, pos + offset);
+        }
 
         let loop_tokens = [
             token::Token::Loop(token::Loop::While),
@@ -98,6 +109,12 @@ impl Parser {
             token::Token::Conditional(token::Conditional::Elif),
         ];
 
+        let max_expr_length= match self.find_expr_possible_boundary(&tokens, true, true, false) {
+            Ok(length) => length,
+            Err(e) => return (Err(e), offset)
+        };
+        let tokens = &tokens[..max_expr_length];
+
         for op in loop_tokens.iter() {
             if let Ok(Some(_)) = self.find_first_token_skip_brackets(&op, &tokens) {
                 let (node, pos) = self.parse_loop_expr(&tokens);
@@ -105,7 +122,10 @@ impl Parser {
             }
         }
 
-        let max_expr_length= self.find_expr_possible_boundary(&tokens, true, false);
+        let max_expr_length= match self.find_expr_possible_boundary(&tokens, true, false, false) {
+            Ok(length) => length,
+            Err(e) => return (Err(e), offset)
+        };
         let tokens = &tokens[..max_expr_length];
         
 
@@ -120,7 +140,10 @@ impl Parser {
             }
         }
 
-        let max_expr_length= self.find_expr_possible_boundary(&tokens, false, false);
+        let max_expr_length= match self.find_expr_possible_boundary(&tokens, false, false, false) {
+            Ok(length) => length,
+            Err(e) => return (Err(e), offset)
+        };
         let tokens = &tokens[..max_expr_length];
 
         if self.is_tuple_expr(tokens) {

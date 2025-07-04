@@ -44,6 +44,10 @@ impl Parser {
     pub fn make_tuple(&mut self, tokens: &[token::Token]) -> Result<Tuple<Vec<token::Token>>, Error> {
         // note this function expects the entire token list to be the tuple
 
+        if tokens.is_empty() {
+            return Ok(Tuple::Empty);
+        }
+
         // first check if there is only one or many:
         let next_comma = match self.find_first_token_skip_brackets(&token::Token::Punctuation(token::Punctuation::Comma), &tokens) {
             Ok(pos) => pos,
@@ -101,7 +105,10 @@ impl Parser {
     }
 
     pub fn make_left_matching_tuple<T: Clonable>(&mut self, tokens: &[token::Token], structure: Tuple<T>) -> (Result<Tuple<Vec<token::Token>>, Error>, usize) {
-        let expr_lim = self.find_expr_possible_boundary(&tokens, false, false);
+        let expr_lim = match self.find_expr_possible_boundary(&tokens, false, false, false) {
+            Ok(length) => length,
+            Err(e) => return (Err(e), 0)
+        };
         let tokens = if expr_lim >= tokens.len() {
             &tokens
         } else {

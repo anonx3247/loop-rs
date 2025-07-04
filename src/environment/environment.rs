@@ -28,6 +28,7 @@ pub enum RuntimeError {
     NoVariableAtHeapIndex(usize),
     FunctionNotFound(String),
     InvalidFunctionCall,
+    CannotDeclareAnonymousFunction,
     UnaryOperationError(UnaryOperationError),
 }   
 

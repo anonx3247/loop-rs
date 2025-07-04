@@ -14,6 +14,7 @@ impl Literal {
             token::Token::Literal(token::Literal::Float(value)) => Value::Float(value),
             token::Token::Literal(token::Literal::String(value, raw)) => Value::String(value, raw),
             token::Token::Literal(token::Literal::Bool(value)) => Value::Bool(value),
+            token::Token::Literal(token::Literal::None) => Value::None,
             _ => return Err(Error::ASTError(ASTError::InvalidLiteralToken(token))),
         }))
     }

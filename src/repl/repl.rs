@@ -20,8 +20,8 @@ struct LoopHighlighter;
 
 fn print_fn() -> FnDeclaration {
     FnDeclaration {
-        name: "print".to_string(),
-        params: HashMap::from([("value".to_string(), Type::String)]),
+        name: Some("print".to_string()),
+        params: HashMap::from([("value".to_string(), Type::Any)]),
         return_type: None,
         body: Scope::new(vec![
             Box::new(Literal(Value::String("{value}".to_string(), false))),

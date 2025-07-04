@@ -1,12 +1,13 @@
+use std::fmt::Debug;
 use crate::{ast::ASTNode, lexer::{token}};
 use super::parser::{Parser, ParseError};
 use crate::Error;
 
 impl Parser {
-    pub fn parse_block_expr(
+    pub fn parse_block_expr<K: Debug>(
         &mut self, tokens: &[token::Token],
-        parse_expr: Option<fn(&mut Self, &[token::Token]) -> (Result<Box<dyn ASTNode>, Error>, usize)>
-    ) -> (Result<(Box<dyn ASTNode>, Option<Box<dyn ASTNode>>), Error>, usize) {
+        parse_expr: Option<fn(&mut Self, &[token::Token]) -> (Result<K, Error>, usize)>
+    ) -> (Result<(Box<dyn ASTNode>, Option<K>), Error>, usize) {
         let brace_loc = self.find_opening_brace_for(&tokens, tokens[0].clone());
         let brace_loc = match brace_loc {
             Ok(loc) => loc,

@@ -28,6 +28,7 @@ pub enum Type {
     Option(Box<Type>),
     Tuple(Vec<Type>),
     FnType(Box<FnSignature>),
+    Any,
 }
 
 impl Clonable for Type {
@@ -73,6 +74,7 @@ impl Type {
             token::Type::StringOption => Type::Option(Box::new(Type::String)),
             token::Type::Generic(c) => Type::Generic(c),
             token::Type::UserDefined(s) => Type::UserDefined(s),
+            token::Type::Any => Type::Any,
         }
     }
     

@@ -42,7 +42,7 @@ impl Parser {
         let mut tokens = tokens.to_vec();
         let mut result = MultiExpression { children: Vec::new() };
         if tokens.is_empty() {
-            return (Err(Error::ParserError(ParseError::EmptyTokens)), 0);
+            return (Ok(Box::new(EmptyASTNode::new())), 0);
         }
         while !tokens.is_empty() {
             let (node, new_pos) = self.parse_expr(&tokens);

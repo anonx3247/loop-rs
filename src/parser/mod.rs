@@ -3,6 +3,7 @@ pub mod test_parser;
 
 mod declaration_assignment;
 mod fn_call;
+mod fn_declaration;
 mod binary;
 mod conditional;
 mod expr;

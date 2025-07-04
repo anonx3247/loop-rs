@@ -244,5 +244,6 @@ pub fn check_type(type_: Type, value: Value) -> Result<(), Error> {
             Value::Fn(_) => Ok(()),
             _ => Err(Error::RuntimeError(RuntimeError::ValueNotOfType(value.to_string(), Type::FnType(signature)))),
         },
+        Type::Any => Ok(()),
     }
 }

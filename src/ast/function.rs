@@ -6,7 +6,7 @@ use crate::ast::type_node::Type;
 
 #[derive(Debug)]
 pub struct FnDeclaration {
-    pub name: String,
+    pub name: Option<String>,
     pub params: HashMap<String, Type>,
     pub return_type: Option<Type>,
     pub body: Scope,
@@ -15,6 +15,10 @@ pub struct FnDeclaration {
 impl FnDeclaration {
     pub fn signature(&self) -> FnSignature {
         FnSignature { params: self.params.clone(), return_type: self.return_type.clone() }
+    }
+
+    pub fn from_signature(name: Option<String>, signature: FnSignature, body: Scope) -> Self {
+        Self { name, params: signature.params, return_type: signature.return_type, body }
     }
 }
 
@@ -27,7 +31,7 @@ pub struct FnSignature {
 impl Clonable for FnDeclaration {
     fn clone_element(&self) -> Self {
         Self {
-            name: self.name.clone(),
+            name: self.name.clone().map(|n| n.clone()),
             params: self.params.clone(),
             return_type: self.return_type.clone(),
             body: self.body.clone(),
@@ -37,7 +41,7 @@ impl Clonable for FnDeclaration {
 
 impl ASTNode for FnDeclaration {
     fn element(&self) -> String {
-        format!("fn {} ({}) -> {:?}", self.name, self.params.keys().map(|k| 
+        format!("fn {} ({}) -> {:?}", self.name.clone().unwrap_or("".to_string()), self.params.keys().map(|k| 
             format!("{}: {:?}", k, self.params.get(k).unwrap())
         ).collect::<Vec<String>>().join(", "), self.return_type)
     }
@@ -51,12 +55,7 @@ impl ASTNode for FnDeclaration {
     }
 
     fn eval(&self, env: &mut Environment) -> Result<Value, Error> {
-        env.declare_assign(
-            self.name.clone(), 
-            Value::Fn(Box::new(self.body.clone())), 
-            false, 
-            Some(Type::FnType(Box::new(self.signature())))
-        )?;
+        env.declare_function(self.clone_element())?;
         Ok(Value::Bool(true))
     }
 }

@@ -8,7 +8,21 @@ impl Parser {
     pub fn parse_type_expr(&mut self, tokens: &[token::Token]) -> (Result<Type, Error>, usize) {
         let tokens = tokens.to_vec();
 
-        let max_expr_length= self.find_expr_possible_boundary(&tokens, false, false);
+        if let token::Token::Function(token::Function::Fn) = tokens[0] {
+            let ((signature, name), new_pos) = match self.parse_fn_signature(&tokens) {
+                (Ok(k), new_pos) => (k, new_pos),
+                (Err(e), new_pos) => return (Err(e), new_pos),
+            };
+            if let Some(name) = name {
+                return (Err(Error::ParserError(ParseError::UnexpectedToken(token::Token::Identifier(name)))), 0);
+            }
+            return (Ok(Type::FnType(Box::new(signature))), new_pos);
+        }
+
+        let max_expr_length= match self.find_expr_possible_boundary(&tokens, false, false, false) {
+            Ok(length) => length,
+            Err(e) => return (Err(e), 0)
+        };
         let tokens = &tokens[..max_expr_length];
 
         if let Ok(Some(_)) = self.find_first_token_skip_brackets(&token::Token::Punctuation(token::Punctuation::Comma), tokens) {

@@ -131,6 +131,7 @@ pub enum Type {
     StringOption,
     Generic(char),
     UserDefined(String),
+    Any,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
@@ -328,6 +329,7 @@ pub fn get_base_types_map() -> HashMap<&'static str, Token> {
     base_types.insert("f64?", Token::Type(Type::F64Option));
     base_types.insert("bool?", Token::Type(Type::BoolOption));
     base_types.insert("string?", Token::Type(Type::StringOption));
+    base_types.insert("any", Token::Type(Type::Any));
     base_types
 }
 
@@ -428,6 +430,7 @@ impl Token {
                 Type::F64Option => String::from("f64?"),
                 Type::BoolOption => String::from("bool?"),
                 Type::StringOption => String::from("string?"),
+                Type::Any => String::from("any"),
             },
             Token::Module(_module) => match _module {
                 Module::Module => String::from("Module"),
