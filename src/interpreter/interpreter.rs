@@ -3,13 +3,13 @@ use std::path::Path;
 use crate::lexer::Lexer;
 use crate::parser::parser::Parser;
 use crate::environment::environment::Environment;
-use crate::environment::heap::Heap;
+use crate::environment::heap::VariableHeap;
 use std::rc::Rc;
 use std::cell::RefCell;
 
 pub fn run_file(path: &Path) {
     let content = fs::read_to_string(path).expect("Unable to read file");
-    let heap = Heap::new();
+    let heap = VariableHeap::new();
     let mut lexer = Lexer::new(content);
     match lexer.tokenize() {
         Ok(_) => {

@@ -5,14 +5,27 @@ use crate::environment::environment::Environment;
 #[derive(Debug)]
 pub struct Scope(Vec<Box<dyn ASTNode>>);
 
+
+impl Clone for Scope {
+    fn clone(&self) -> Self {
+        Self(self.0.iter().map(|c| c.clone_to_node()).collect())
+    }
+}
+
+impl PartialEq for Scope {
+    fn eq(&self, _: &Self) -> bool {
+        false // Scopes are not compared for equality in a meaningful way
+    }
+}
+
 impl Scope {
     pub fn new(children: Vec<Box<dyn ASTNode>>) -> Self {
         Self(children)
     }
 
-    pub fn eval(&self, env: &mut Environment, by_reference: bool) -> Result<Value, Error> {
+    pub fn eval(&self, env: &mut Environment) -> Result<Value, Error> {
         if self.0.len() > 0 {
-            let mut local_env = env.new_child(by_reference);
+            let mut local_env = env.new_child();
             for child in 0..self.0.len() - 1 {
                 self.0[child].eval(&mut local_env)?;
             }

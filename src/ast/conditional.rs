@@ -26,8 +26,7 @@ pub trait Conditional: ASTNode {
         while let Some(conditional) = current_conditional {
             match conditional.condition(env) {
                 Ok(Value::Bool(true)) => {
-                    let mut result = Value::None;
-                    result = conditional.content().eval(env, true)?;
+                    let result = conditional.content().eval(env)?;
                     return Ok(Some(result));
                 }
                 Err(e) => {
@@ -145,7 +144,7 @@ impl ASTNode for ElseBlock {
         match self.evaluate_conditional(env) {
             Ok(value) => match value {
                 Some(value) => Ok(value),
-                _ => self.content.eval(env, true),
+                _ => self.content.eval(env),
             },
             Err(e) => Err(e),
         }

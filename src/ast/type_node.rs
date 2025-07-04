@@ -1,3 +1,4 @@
+use crate::ast::fn_declaration::FnSignature;
 use crate::ast::tuple::{Clonable, Tuple, TupleLike};
 use crate::ast::{ASTNode,Value};
 use crate::environment::environment::{Environment};
@@ -26,6 +27,7 @@ pub enum Type {
     UserDefined(String),
     Option(Box<Type>),
     Tuple(Vec<Type>),
+    FnType(Box<FnSignature>),
 }
 
 impl Clonable for Type {

@@ -29,7 +29,7 @@ impl ASTNode for Loop {
 
     fn eval(&self, env: &mut Environment) -> Result<Value, Error> {
         loop {
-            self.content.eval(env, true)?;
+            self.content.eval(env)?;
         }
     }
 }
@@ -89,7 +89,7 @@ impl ASTNode for While {
         let mut current_value = self.condition.eval(env)?;
         let mut result = Value::None;
         while current_value == Value::Bool(true) {
-            result = self.content.eval(env, true)?;
+            result = self.content.eval(env)?;
             current_value = self.condition.eval(env)?;
         }
         Ok(result)

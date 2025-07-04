@@ -1,3 +1,4 @@
+use crate::ast::scope::Scope;
 use crate::ast::tuple::{Clonable, Tuple, TupleLike};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -9,6 +10,7 @@ pub enum Value {
     Tuple(Vec<Value>),
     None,
     Error(String),
+    Fn(Box<Scope>),
 }
 
 impl std::fmt::Display for Value {
@@ -29,6 +31,7 @@ impl std::fmt::Display for Value {
                 write!(f, "({})", result)
             }
             Value::Error(e) => write!(f, "error({})", e),
+            Value::Fn(_) => write!(f, "fn(..)"),
         }
     }
 }

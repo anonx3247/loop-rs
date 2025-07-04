@@ -1,7 +1,7 @@
-use crate::lexer::Lexer;
+use crate::{environment::heap::Heap, lexer::Lexer};
 use crate::parser::parser::*;
 use crate::environment::environment::Environment;
-use crate::environment::heap::Heap;
+use crate::environment::heap::VariableHeap;
 use std::rc::Rc;
 use std::cell::RefCell;
     use colored::Colorize;
@@ -74,7 +74,7 @@ pub fn repl(print_ast: bool, print_tokens: bool) {
         .with_edit_mode(edit_mode);
 
     let prompt = DefaultPrompt::default();
-    let heap = Heap::new();
+    let heap = VariableHeap::new();
     let heap_rc = Rc::new(RefCell::new(heap));
     let mut env = Environment::new(None, Some(heap_rc.clone()));
 
