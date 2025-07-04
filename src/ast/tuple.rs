@@ -80,6 +80,12 @@ impl <T: Clonable> Clonable for Option<T> {
     }
 }
 
+impl<T: Clonable, K: Clonable> Clonable for (T, K) {
+    fn clone_element(&self) -> Self {
+        (self.0.clone_element(), self.1.clone_element())
+    }
+}
+
 impl<T: Clonable> Clonable for Tuple<T> {
     fn clone_element(&self) -> Tuple<T> {
         match self {

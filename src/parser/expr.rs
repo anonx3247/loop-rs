@@ -52,7 +52,13 @@ impl Parser {
             offset += 1;
             tokens = &tokens[1..];
         }
-        
+
+        if let token::Token::Identifier(_) = tokens[0] {
+            let pos = 1;
+            if pos < tokens.len() && matches!(tokens[pos], token::Token::Bracket(token::Bracket::OpenParen)) {
+                return self.parse_fn_call(&tokens);
+            }
+        }
 
 
         let max_expr_length= self.find_expr_possible_boundary(&tokens, true, true);

@@ -8,6 +8,7 @@ pub struct Parser {
 
 #[derive(Debug)]
 pub enum ParseError {
+    UnexpectedEndOfInput,
     Unimplimented,
     CannotBuildTupleType,
     EmptyTokens,
@@ -22,6 +23,7 @@ pub enum ParseError {
     UnexpectedContentBeforeBlock,
     UnexpectedBeginningOfBlock,
     AssignmentTupleNotIdentifier,
+    IncorrectFunctionCallSyntax,
 }
 
 impl Parser {

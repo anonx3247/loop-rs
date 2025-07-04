@@ -1,4 +1,4 @@
-use crate::ast::fn_declaration::FnSignature;
+use crate::ast::function::FnSignature;
 use crate::ast::tuple::{Clonable, Tuple, TupleLike};
 use crate::ast::{ASTNode,Value};
 use crate::environment::environment::{Environment};

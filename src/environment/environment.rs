@@ -2,6 +2,7 @@ use crate::ast::assignment::AssignmentError;
 use crate::ast::value::Value;
 use crate::ast::type_node::Type;
 use crate::ast::binary_operation::BinaryOperationError;
+use crate::ast::unary_operation::UnaryOperationError;
 use std::collections::HashMap;
 use crate::Error;
 use crate::lexer::{get_string_interpolations};
@@ -26,6 +27,8 @@ pub enum RuntimeError {
     AssignmentError(AssignmentError),
     NoVariableAtHeapIndex(usize),
     FunctionNotFound(String),
+    InvalidFunctionCall,
+    UnaryOperationError(UnaryOperationError),
 }   
 
 #[derive(Clone, Debug, Default)]
@@ -36,32 +39,43 @@ pub struct Environment {
 }   
 
 #[derive(Clone, Debug)]
-pub struct ReferenceOrValue {
-    pub index: usize,
-    pub value: Option<Value>,
+pub enum ReferenceOrValue {
+    Reference(usize, String),
+    Value(Value),
 }
 
 impl ReferenceOrValue {
-    pub fn new(env: &mut Environment, name: &str) -> Result<Self, Error> {
+
+    pub fn from_value(value: Value) -> Self {
+        Self::Value(value)
+    }
+
+    pub fn from_reference(env: &mut Environment, name: &str) -> Result<Self, Error> {
         let var = env.get_variable(name)?;
         let value = env.heap.borrow().get(var.index).unwrap().clone();
         if var.type_.is_basic() {
-            Ok(Self { index: var.index, value: Some(value.clone()) })
+            Ok(Self::Value(value.clone()))
         } else {
-            Ok(Self { index: var.index, value: None })
+            Ok(Self::Reference(var.index, name.to_string()))
         }
     }
 
     pub fn is_reference(&self) -> bool {
-        self.value.is_none()
+        matches!(self, Self::Reference(_, _))
+    }
+
+    pub fn is_value(&self) -> bool {
+        matches!(self, Self::Value(_))
     }
 
     pub fn eval(&self, env: &mut Environment) -> Result<Value, Error> {
-        if self.value.is_none() {
-            let value = env.heap.borrow().get(self.index).unwrap().clone();
-            return Ok(value);
+        match self {
+            Self::Reference(index, _) => {
+                let value = env.heap.borrow().get(*index).unwrap().clone();
+                Ok(value)
+            }
+            Self::Value(value) => Ok(value.clone()),
         }
-        Ok(self.value.clone().unwrap())
     }
 }
 

@@ -1,6 +1,6 @@
 use crate::ast::tuple::Clonable;
 use crate::ast::{ASTNode,Value, ASTError};
-use crate::environment::environment::Environment;
+use crate::environment::environment::{Environment, ReferenceOrValue};
 use crate::lexer::token;
 use crate::Error;
 
@@ -38,5 +38,9 @@ impl ASTNode for Identifier {
 
     fn clone_to_node(&self) -> Box<dyn ASTNode> {
         Box::new(Identifier(self.0.clone()))
+    }
+
+    fn get_reference(&self, env: &mut Environment) -> Result<ReferenceOrValue, Error> {
+        ReferenceOrValue::from_reference(env, &self.0)
     }
 }

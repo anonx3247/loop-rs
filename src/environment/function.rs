@@ -1,20 +1,32 @@
 use std::collections::HashMap;
+use crate::ast::function::FnDeclaration;
 use crate::ast::type_node::Type;
 use crate::ast::Value;
 use crate::environment::environment::{Environment, RuntimeError, ReferenceOrValue};
-use crate::environment::variable::check_type;
+use crate::environment::heap::Heap;
+use crate::environment::variable::{check_type, Variable};
 use crate::Error;
 
 impl Environment {
+
+    pub fn declare_function(&mut self, declaration: FnDeclaration) -> Result<(), Error> {
+        let index = self.heap.borrow_mut().allocate(Value::Fn(Box::new(declaration.body.clone())));
+        let type_ = Type::FnType(Box::new(declaration.signature()));
+        self.local_variables.insert(declaration.name, Variable { initialized: true, index, mutable: false, type_ });
+        Ok(())
+    }
 
     pub fn call(&mut self, name: &str, args: HashMap<String, ReferenceOrValue>) -> Result<Value, Error> {
         let function = self.get_variable(name)?;
         let mut env = self.new_child();
         for (param, reference_or_value) in args.clone() {
-            if reference_or_value.is_reference() {
-                env.add_reference(&param, reference_or_value.index)?;
-            } else {
-                env.declare_assign(param, reference_or_value.value.unwrap(), false, None)?;
+            match reference_or_value {
+                ReferenceOrValue::Reference(index, _) => {
+                    env.add_reference(&param, index)?;
+                }
+                ReferenceOrValue::Value(value) => {
+                    env.declare_assign(param, value.clone(), false, None)?;
+                }
             }
         }
         let signature = match function.type_ {
@@ -36,11 +48,14 @@ impl Environment {
                 Some(reference_or_value) => reference_or_value,
                 None => return Err(Error::RuntimeError(RuntimeError::VariableNotFound(param.to_string()))),
             };
-            if reference_or_value.is_reference() {
-                let value = reference_or_value.eval(self)?;
-                check_type(type_, value.clone())?;
-            } else {
-                check_type(type_, reference_or_value.value.clone().unwrap())?;
+            match reference_or_value {
+                ReferenceOrValue::Reference(_, _) => {
+                    let value = reference_or_value.eval(self)?;
+                    check_type(type_, value.clone())?;
+                }
+                ReferenceOrValue::Value(value) => {
+                    check_type(type_, value.clone())?;
+                }
             }
         }
         Ok(())

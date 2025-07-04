@@ -1,5 +1,5 @@
 use crate::ast::value::Value;
-use crate::environment::environment::Environment;
+use crate::environment::environment::{Environment, ReferenceOrValue};
 use crate::ast::tuple::Clonable;
 use crate::Error;
 use crate::lexer::token;
@@ -43,6 +43,10 @@ pub trait ASTNode : std::fmt::Debug {
             }
             Ok(result)
         }
+    }
+
+    fn get_reference(&self, env: &mut Environment) -> Result<ReferenceOrValue, Error> {
+        Ok(ReferenceOrValue::from_value(self.eval(env)?))
     }
 
     fn clone_to_node(&self) -> Box<dyn ASTNode>;

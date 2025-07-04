@@ -4,7 +4,7 @@ use crate::lexer::token;
 use crate::Error;
 
 #[derive(Debug)]
-pub struct Literal(Value);
+pub struct Literal(pub Value);
 
 impl Literal {
 

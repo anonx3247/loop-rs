@@ -72,6 +72,11 @@ impl Parser {
             token::Token::Operator(token::Operator::BitShiftRight),
         ];
 
+        if tokens[0] == token::Token::Operator(token::Operator::Sub) {
+            let (node, pos) = self.parse_unary_operator_expr(&tokens, token::Operator::Sub);
+            return (node, pos);
+        }
+
         self.parse_binary_operator_expr(tokens, &operators, None, None)
     }
 
@@ -87,6 +92,25 @@ impl Parser {
             token::Token::Operator(token::Operator::Lt),
             token::Token::Operator(token::Operator::Lte),
         ];
+
+        if tokens[0] == token::Token::Operator(token::Operator::Not) {
+            let (node, pos) = self.parse_unary_operator_expr(&tokens, token::Operator::Not);
+            return (node, pos);
+        }
+
         self.parse_binary_operator_expr(tokens, &operators, None, None)
+    }
+
+    pub fn parse_unary_operator_expr(&mut self, tokens: &[token::Token], operator: token::Operator) -> (Result<Box<dyn ast::ASTNode>, Error>, usize) {
+        let (node, pos) = self.parse_expr(&tokens[1..]);
+        let node = match node {
+            Ok(node) => node,
+            Err(e) => return (Err(e), pos),
+        };
+        let node = unary_operation::UnaryOperation {
+            operand: node,
+            operator: operator,
+        };
+        return (Ok(Box::new(node)), pos + 1);
     }
 } 

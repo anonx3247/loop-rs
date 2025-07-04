@@ -93,6 +93,7 @@ pub enum Operator {
     BitAnd,
     BitOr,
     BitXor,
+    BitNot,
     BitShiftLeft,
     BitShiftRight,
     Assign,
@@ -276,6 +277,7 @@ pub fn get_symbols_map() -> HashMap<&'static str, Token> {
     symbols.insert("not", Token::Operator(Operator::Not));
     symbols.insert("&", Token::Operator(Operator::BitAnd));
     symbols.insert("|", Token::Operator(Operator::BitOr));
+    symbols.insert("~", Token::Operator(Operator::BitNot));
     symbols.insert("<<", Token::Operator(Operator::BitShiftLeft));
     symbols.insert(">>", Token::Operator(Operator::BitShiftRight));
     symbols.insert("=>", Token::Punctuation(Punctuation::DoubleArrow));

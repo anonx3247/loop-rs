@@ -1,7 +1,13 @@
+use crate::ast::Value;
 use crate::{environment::heap::Heap, lexer::Lexer};
 use crate::parser::parser::*;
 use crate::environment::environment::Environment;
 use crate::environment::heap::VariableHeap;
+use crate::ast::function::FnDeclaration;
+use crate::ast::type_node::Type;
+use crate::ast::scope::Scope;
+use std::collections::HashMap;
+use crate::ast::literal::Literal;
 use std::rc::Rc;
 use std::cell::RefCell;
     use colored::Colorize;
@@ -11,6 +17,17 @@ use reedline::{
 use nu_ansi_term::{Color, Style};
 
 struct LoopHighlighter;
+
+fn print_fn() -> FnDeclaration {
+    FnDeclaration {
+        name: "print".to_string(),
+        params: HashMap::from([("value".to_string(), Type::String)]),
+        return_type: None,
+        body: Scope::new(vec![
+            Box::new(Literal(Value::String("{value}".to_string(), false))),
+        ]),
+    }
+}
 
 impl Highlighter for LoopHighlighter {
     fn highlight(&self, line: &str, _cursor: usize) -> StyledText {
@@ -77,6 +94,8 @@ pub fn repl(print_ast: bool, print_tokens: bool) {
     let heap = VariableHeap::new();
     let heap_rc = Rc::new(RefCell::new(heap));
     let mut env = Environment::new(None, Some(heap_rc.clone()));
+
+    env.declare_function(print_fn()).unwrap();
 
     loop {
         let sig = line_editor.read_line(&prompt);
